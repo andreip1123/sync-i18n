@@ -7,7 +7,6 @@ const path = require('path');
 describe('makeXmlEntry', function () {
   it('should make new xml entry', function () {
     var sourceFile = __dirname + '/temp/translation.json';
-    console.log('sourcefile');
 
     var tag = 'NEW_TAG_';
     var englishMessage = 'This is a new tag';
@@ -65,5 +64,28 @@ describe('getLanguages', function () {
     });
     var languages = synci18n.getLanguages(sourceFile);
     languages.should.eql(languages, ['en_US', 'de_DE', 'nl_NL', 'fr_FR', 'ja_JP']);
+  });
+});
+
+describe('makeMsgs', function () {
+  it('should create the msgs file', function () {
+    var sourceFile = './test/translation.xml';
+    var destinationFolder = __dirname + '/temp';
+
+    var synci18n = new Synci18n({
+      mode: 'plugin',
+      sourceFile,
+      destinationFolder
+    });
+
+    let expectedMsgsFilePath = synci18n.msgsFilePath;
+
+    if (fs.existsSync(expectedMsgsFilePath)) {
+      fs.unlinkSync(expectedMsgsFilePath);
+    }
+
+    synci18n.makeMsgs();
+
+    fs.existsSync(expectedMsgsFilePath).should.equal(true);
   });
 });
