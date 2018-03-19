@@ -13,7 +13,7 @@ describe('makeXmlEntry', function () {
     var comment = 'Trying to add new tag';
 
 
-    var synci18n = new Synci18n();
+    var synci18n = new Synci18n({sourceFile});
     var languages = synci18n.getLanguages();
     var xmlEntry = synci18n.makeXmlEntry('NEW_TAG_', { comment: comment, en_US: englishMessage });
     var allChecksPassed = true;
@@ -78,7 +78,7 @@ describe('makeMsgs', function () {
       destinationFolder
     });
 
-    let expectedMsgsFilePath = synci18n.msgsFilePath;
+    let expectedMsgsFilePath = synci18n.getMsgsFilePath();
 
     if (fs.existsSync(expectedMsgsFilePath)) {
       fs.unlinkSync(expectedMsgsFilePath);
@@ -87,5 +87,33 @@ describe('makeMsgs', function () {
     synci18n.makeMsgs();
 
     fs.existsSync(expectedMsgsFilePath).should.equal(true);
+  });
+});
+
+describe('testDefaults', function () {
+  it('should create at expected default paths', function () {
+    let synci18n = new Synci18n();
+
+    // Weak check for proper default paths.
+    synci18n.getSourceFile().indexOf('i18n').should.not.equal(-1);
+    synci18n.getDestinationFolder().indexOf('web').should.not.equal(-1);
+
+    synci18n.defaultSourceFile = __dirname + '/translation.xml';
+    synci18n.defaultDestinationFolder = __dirname + '/temp';
+
+    let expectedMsgsFilePath = synci18n.getMsgsFilePath();
+    if (fs.existsSync(expectedMsgsFilePath)) {
+      fs.unlinkSync(expectedMsgsFilePath);
+    }
+
+    let expectedOutputFile = synci18n.getDestinationFolder() + '/' + path.basename(synci18n.defaultSourceFile, path.extname(synci18n.defaultSourceFile)) + '.json';
+
+    if (fs.existsSync(expectedOutputFile)) {
+      fs.unlinkSync(expectedOutputFile);
+    }
+
+    synci18n.makePluginTranslation();
+    fs.existsSync(expectedMsgsFilePath).should.equal(true);
+    fs.existsSync(expectedOutputFile).should.equal(true);
   });
 });

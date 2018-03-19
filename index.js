@@ -6,13 +6,23 @@ const xml2js = require('xml2js');
 function Synci18n(options) {
   options = options || {};
 
+  this.defaultSourceFile = __dirname + '/i18n/translation.xml';
+  this.defaultDestinationFolder = __dirname + '/web';
+
   this.sourceFile = options.sourceFile;
   this.destinationFolder = options.destinationFolder;
 
   this.webauthorMode = options.webauthorMode;
-  this.setMsgsFilePath(options.msgsFilePath);
 
 }
+
+Synci18n.prototype.getSourceFile = function () {
+  return this.sourceFile || this.defaultSourceFile;
+};
+
+Synci18n.prototype.getDestinationFolder = function () {
+  return this.destinationFolder || this.defaultDestinationFolder;
+};
 
 /**
  * Get the list of language codes from the xml file.
@@ -20,9 +30,9 @@ function Synci18n(options) {
  */
 Synci18n.prototype.getLanguages = function () {
   let languages;
-  let sourceFile = this.sourceFile;
+  let sourceFile = this.getSourceFile();
   if (sourceFile) {
-    console.log('getting languages from file');
+    console.log('getting languages from file', sourceFile);
     languages = JSON.parse(fs.readFileSync(sourceFile, 'utf8'));
     languages = languages.translation.languageList[0].language;
 
@@ -39,8 +49,8 @@ Synci18n.prototype.getLanguages = function () {
  * Convert the source xml file to json.
  */
 Synci18n.prototype.makeTranslationJsons = function () {
-  let sourceFile = this.sourceFile;
-  let destinationFolder = this.destinationFolder;
+  let sourceFile = this.getSourceFile();
+  let destinationFolder = this.getDestinationFolder();
 
   let parser = new xml2js.Parser();
   let xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
@@ -80,26 +90,26 @@ Synci18n.prototype.makeXmlEntry = function (key, trObj) {
  * Set the msgs file path.
  * @param msgsFilePath The path of msgs file from options.
  */
-Synci18n.prototype.setMsgsFilePath = function (msgsFilePath) {
+Synci18n.prototype.getMsgsFilePath = function (msgsFilePath) {
   let filePath = null;
   if (msgsFilePath) {
     filePath = msgsFilePath;
   } else {
     if (this.webauthorMode) {
-      filePath = this.destinationFolder + '/msgs.js';
+      filePath = this.getDestinationFolder() + '/msgs.js';
     } else {
-      filePath = this.destinationFolder + '/0translation.js';
+      filePath = this.getDestinationFolder() + '/0translation.js';
     }
   }
-  this.msgsFilePath = filePath;
+  return filePath;
 };
 
 /**
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.makeMsgs = function () {
-  let xmlFile = this.sourceFile;
-  let jsonFile = this.destinationFolder + '/' + path.basename(xmlFile, path.extname(xmlFile)) + '.json';
+  let xmlFile = this.getSourceFile();
+  let jsonFile = this.getDestinationFolder() + '/' + path.basename(xmlFile, path.extname(xmlFile)) + '.json';
 
   let msgsObj = {};
   let tags = JSON.parse(fs.readFileSync(jsonFile, 'utf8')).translation.key;
@@ -114,7 +124,12 @@ Synci18n.prototype.makeMsgs = function () {
     msgsObj[key] = value;
   });
   let msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
-  fs.writeFileSync(this.msgsFilePath, msgsFile, 'utf8');
+  fs.writeFileSync(this.getMsgsFilePath(), msgsFile, 'utf8');
+};
+
+Synci18n.prototype.makePluginTranslation = function () {
+  this.makeTranslationJsons();
+  this.makeMsgs();
 };
 
 module.exports = Synci18n;
