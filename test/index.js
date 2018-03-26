@@ -112,7 +112,7 @@ describe('testDefaults', function () {
       fs.unlinkSync(expectedOutputFile);
     }
 
-    synci18n.makePluginTranslation();
+    synci18n.generateTranslations();
     fs.existsSync(expectedMsgsFilePath).should.equal(true);
     fs.existsSync(expectedOutputFile).should.equal(true);
   });

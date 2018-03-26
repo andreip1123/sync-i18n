@@ -127,7 +127,7 @@ Synci18n.prototype.makeMsgs = function () {
   fs.writeFileSync(this.getMsgsFilePath(), msgsFile, 'utf8');
 };
 
-Synci18n.prototype.makePluginTranslation = function () {
+Synci18n.prototype.generateTranslations = function () {
   this.makeTranslationJsons();
   this.makeMsgs();
 };

@@ -17,5 +17,5 @@ var syncI18n = require('sync-i18n')({
     sourceFile: '...',              // defaults to the i18n folder
     destinationFolder: '...'        // defaults to the web folder
 });
-syncI18n.makePluginTranslation();
+syncI18n.generateTranslations();
 ```
