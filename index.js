@@ -29,15 +29,17 @@ Synci18n.prototype.getDestinationFolder = function () {
  * @returns {Array.<String>} The list of language codes.
  */
 Synci18n.prototype.getLanguages = function () {
-  let languages;
-  let sourceFile = this.getSourceFile();
+  var languages;
+  var sourceFile = this.getSourceFile();
   if (sourceFile) {
     console.log('getting languages from file', sourceFile);
     languages = JSON.parse(fs.readFileSync(sourceFile, 'utf8'));
     languages = languages.translation.languageList[0].language;
 
-    let languageCodes = [];
-    languages.forEach(language => languageCodes.push(language['$'].lang));
+    var languageCodes = [];
+    languages.forEach(function (language) {
+      languageCodes.push(language['$'].lang);
+    });
     return languageCodes;
   } else {
     console.log('getting default languages');
@@ -49,13 +51,13 @@ Synci18n.prototype.getLanguages = function () {
  * Convert the source xml file to json.
  */
 Synci18n.prototype.makeTranslationJsons = function () {
-  let sourceFile = this.getSourceFile();
-  let destinationFolder = this.getDestinationFolder();
+  var sourceFile = this.getSourceFile();
+  var destinationFolder = this.getDestinationFolder();
 
-  let parser = new xml2js.Parser();
-  let xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
+  var parser = new xml2js.Parser();
+  var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
 
-  parser.parseString(xmlFileContent, (err, result) => {
+  parser.parseString(xmlFileContent, function(err, result) {
     if (destinationFolder) {
       fs.writeFileSync(destinationFolder + '/translation.json', JSON.stringify(result), 'utf8');
     } else {
@@ -73,8 +75,8 @@ Synci18n.prototype.makeTranslationJsons = function () {
  * @returns {string} A string with the xml entry to be added to translation.xml
  */
 Synci18n.prototype.makeXmlEntry = function (key, trObj) {
-  let languages = this.getLanguages();
-  let xmlEntryString =
+  var languages = this.getLanguages();
+  var xmlEntryString =
     '    <key distribution="webauthor" value="' + key + '">\r\n' +
     '        ' + (trObj.comment ? '<comment>' + trObj.comment + '</comment>\r\n' : '<comment/>\r\n');
   languages.forEach(function(language) {
@@ -91,7 +93,7 @@ Synci18n.prototype.makeXmlEntry = function (key, trObj) {
  * @param msgsFilePath The path of msgs file from options.
  */
 Synci18n.prototype.getMsgsFilePath = function (msgsFilePath) {
-  let filePath = null;
+  var filePath = null;
   if (msgsFilePath) {
     filePath = msgsFilePath;
   } else {
@@ -108,22 +110,22 @@ Synci18n.prototype.getMsgsFilePath = function (msgsFilePath) {
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.makeMsgs = function () {
-  let xmlFile = this.getSourceFile();
-  let jsonFile = this.getDestinationFolder() + '/' + path.basename(xmlFile, path.extname(xmlFile)) + '.json';
+  var xmlFile = this.getSourceFile();
+  var jsonFile = this.getDestinationFolder() + '/' + path.basename(xmlFile, path.extname(xmlFile)) + '.json';
 
-  let msgsObj = {};
-  let tags = JSON.parse(fs.readFileSync(jsonFile, 'utf8')).translation.key;
-  tags.forEach(tag => {
-    let key = tag['$'].value;
-    let value = {};
+  var msgsObj = {};
+  var tags = JSON.parse(fs.readFileSync(jsonFile, 'utf8')).translation.key;
+  tags.forEach(function (tag) {
+    var key = tag['$'].value;
+    var value = {};
 
-    tag.val.forEach(translation => {
+    tag.val.forEach(function (translation) {
       value[translation['$'].lang] = translation['_'];
     });
 
     msgsObj[key] = value;
   });
-  let msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
+  var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.getMsgsFilePath(), msgsFile, 'utf8');
 };
 
