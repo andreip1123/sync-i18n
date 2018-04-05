@@ -11,8 +11,8 @@ function Synci18n(options) {
   }
 
   options = options || {};
-  this.sourceFile = options.sourceFile || __dirname + '/i18n/translation.xml';
-  this.destinationFile = options.destinationFile || __dirname + '/web/0translations';
+  this.sourceFile = options.sourceFile || './i18n/translation.xml';
+  this.destinationFile = options.destinationFile || './web/0translations';
 
   this.readSourceFile(this.sourceFile);
 }
