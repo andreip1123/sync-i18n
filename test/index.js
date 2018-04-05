@@ -1,119 +1,68 @@
 var should = require('chai').should();
 var Synci18n = require('../index');
 var fs = require('fs');
-var xml2js = require('xml2js');
-const path = require('path');
 
-describe('makeXmlEntry', function () {
-  it('should make new xml entry', function () {
-    var sourceFile = __dirname + '/temp/translation.json';
-
-    var tag = 'NEW_TAG_';
-    var englishMessage = 'This is a new tag';
-    var comment = 'Trying to add new tag';
-
-
-    var synci18n = new Synci18n({sourceFile});
-    var languages = synci18n.getLanguages();
-    var xmlEntry = synci18n.makeXmlEntry('NEW_TAG_', { comment: comment, en_US: englishMessage });
-    var allChecksPassed = true;
-
-    languages.forEach(function (languageCode) {
-      if (xmlEntry.indexOf(languageCode) === -1) {
-        allChecksPassed = false;
-      }
-    });
-
-    if (xmlEntry.indexOf(comment) === -1 ||
-      xmlEntry.indexOf(tag) === -1 ||
-      xmlEntry.split(englishMessage).length - 1 !== languages.length||
-      xmlEntry.indexOf('distribution="webauthor"') === -1) {
-      allChecksPassed = false;
-    }
-
-    should.equal(allChecksPassed, true);
-  })
-});
-
-describe('makeTranslationJsons', function () {
-  it('json from xml should be created', function () {
+describe('readSourceFile', function () {
+  it('should read source file properly', function () {
     var sourceFile = './test/translation.xml';
-    var destinationFolder = __dirname + '/temp';
+    var destinationFile = __dirname + '/temp/22translations.js';
 
-    var synci18n = new Synci18n({
-      sourceFile,
-      destinationFolder
+    var synci18n = Synci18n({
+      sourceFile: sourceFile,
+      destinationFile: destinationFile
     });
 
-    var expectedOutputFile = destinationFolder + '/' + path.basename(sourceFile, path.extname(sourceFile)) + '.json';
+    synci18n.languages.should.have.members([ 'en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL' ]);
+    synci18n.tags.length.should.equal(2);
+    synci18n.tags[0]['$'].value.should.equal('RESTART_SERVER_');
+    synci18n.tags[1]['$'].value.should.equal('DEC_');
 
-    if (fs.existsSync(expectedOutputFile)) {
-      fs.unlinkSync(expectedOutputFile);
+    if (fs.existsSync(destinationFile)) {
+      fs.unlinkSync(destinationFile);
     }
 
-    synci18n.makeTranslationJsons();
-    fs.existsSync(expectedOutputFile).should.equal(true);
+    synci18n.generateTranslations();
+    fs.existsSync(destinationFile).should.equal(true);
+    fs.unlinkSync(destinationFile);
   });
 });
 
 describe('getLanguages', function () {
   it('should get the languages provided by the file', function () {
-    var sourceFile = __dirname + '\\temp\\translation.json';
-    var synci18n = new Synci18n({
-      sourceFile
+    var sourceFile = './test/translation.xml';
+    var synci18n = Synci18n({
+      sourceFile: sourceFile
     });
-    var languages = synci18n.getLanguages(sourceFile);
-    languages.should.eql(languages, ['en_US', 'de_DE', 'nl_NL', 'fr_FR', 'ja_JP']);
+    synci18n.languages.should.have.members([ 'en_US', 'de_DE', 'nl_NL', 'fr_FR', 'ja_JP' ]);
   });
 });
 
 describe('makeMsgs', function () {
   it('should create the msgs file', function () {
     var sourceFile = './test/translation.xml';
-    var destinationFolder = __dirname + '/temp';
+    var destinationFile = __dirname + '/temp/01translaciooon.js';
 
-    var synci18n = new Synci18n({
-      mode: 'plugin',
-      sourceFile,
-      destinationFolder
+    var synci18n = Synci18n({
+      sourceFile: sourceFile,
+      destinationFile: destinationFile
     });
 
-    let expectedMsgsFilePath = synci18n.getMsgsFilePath();
-
-    if (fs.existsSync(expectedMsgsFilePath)) {
-      fs.unlinkSync(expectedMsgsFilePath);
+    if (fs.existsSync(destinationFile)) {
+      fs.unlinkSync(destinationFile);
     }
 
-    synci18n.makeMsgs();
+    synci18n.generateTranslations();
 
-    fs.existsSync(expectedMsgsFilePath).should.equal(true);
+    fs.existsSync(destinationFile).should.equal(true);
+    fs.unlinkSync(destinationFile);
   });
 });
 
 describe('testDefaults', function () {
   it('should create at expected default paths', function () {
-    let synci18n = new Synci18n();
-
+    var synci18n = Synci18n();
     // Weak check for proper default paths.
-    synci18n.getSourceFile().indexOf('i18n').should.not.equal(-1);
-    synci18n.getDestinationFolder().indexOf('web').should.not.equal(-1);
-
-    synci18n.defaultSourceFile = __dirname + '/translation.xml';
-    synci18n.defaultDestinationFolder = __dirname + '/temp';
-
-    let expectedMsgsFilePath = synci18n.getMsgsFilePath();
-    if (fs.existsSync(expectedMsgsFilePath)) {
-      fs.unlinkSync(expectedMsgsFilePath);
-    }
-
-    let expectedOutputFile = synci18n.getDestinationFolder() + '/' + path.basename(synci18n.defaultSourceFile, path.extname(synci18n.defaultSourceFile)) + '.json';
-
-    if (fs.existsSync(expectedOutputFile)) {
-      fs.unlinkSync(expectedOutputFile);
-    }
-
-    synci18n.generateTranslations();
-    fs.existsSync(expectedMsgsFilePath).should.equal(true);
-    fs.existsSync(expectedOutputFile).should.equal(true);
+    synci18n.sourceFile.indexOf('/i18n/translation.xml').should.not.equal(-1);
+    synci18n.destinationFile.indexOf('/web/0translations').should.not.equal(-1);
   });
 });

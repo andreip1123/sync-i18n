@@ -4,117 +4,53 @@ const path = require('path');
 const xml2js = require('xml2js');
 
 function Synci18n(options) {
+
+  // User does not have to write 'new'
+  if (!(this instanceof Synci18n)) {
+    return new Synci18n(options);
+  }
+
   options = options || {};
+  this.sourceFile = options.sourceFile || __dirname + '/i18n/translation.xml';
+  this.destinationFile = options.destinationFile || __dirname + '/web/0translations';
 
-  this.defaultSourceFile = __dirname + '/i18n/translation.xml';
-  this.defaultDestinationFolder = __dirname + '/web';
-
-  this.sourceFile = options.sourceFile;
-  this.destinationFolder = options.destinationFolder;
-
-  this.webauthorMode = options.webauthorMode;
-
+  this.readSourceFile(this.sourceFile);
 }
 
-Synci18n.prototype.getSourceFile = function () {
-  return this.sourceFile || this.defaultSourceFile;
-};
-
-Synci18n.prototype.getDestinationFolder = function () {
-  return this.destinationFolder || this.defaultDestinationFolder;
+/**
+ * Read the source file and save its contents.
+ */
+Synci18n.prototype.readSourceFile = function (sourceFile) {
+  if (fs.existsSync(sourceFile)) {
+    var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
+    var parser = new xml2js.Parser();
+    parser.parseString(xmlFileContent, (function(err, result) {
+      this.tags = result.translation.key;
+      this.languages = this.getLanguages(result.translation.languageList[0].language);
+    }).bind(this));
+  } else {
+    console.log('Source file ' + sourceFile + ' does not exist');
+  }
 };
 
 /**
  * Get the list of language codes from the xml file.
  * @returns {Array.<String>} The list of language codes.
  */
-Synci18n.prototype.getLanguages = function () {
-  var languages;
-  var sourceFile = this.getSourceFile();
-  if (sourceFile) {
-    console.log('getting languages from file', sourceFile);
-    languages = JSON.parse(fs.readFileSync(sourceFile, 'utf8'));
-    languages = languages.translation.languageList[0].language;
-
-    var languageCodes = [];
-    languages.forEach(function (language) {
-      languageCodes.push(language['$'].lang);
-    });
-    return languageCodes;
-  } else {
-    console.log('getting default languages');
-    return ['en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL'];
-  }
-};
-
-/**
- * Convert the source xml file to json.
- */
-Synci18n.prototype.makeTranslationJsons = function () {
-  var sourceFile = this.getSourceFile();
-  var destinationFolder = this.getDestinationFolder();
-
-  var parser = new xml2js.Parser();
-  var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
-
-  parser.parseString(xmlFileContent, function(err, result) {
-    if (destinationFolder) {
-      fs.writeFileSync(destinationFolder + '/translation.json', JSON.stringify(result), 'utf8');
-    } else {
-      console.error('could not find temp folder');
-    }
+Synci18n.prototype.getLanguages = function (languages) {
+  var languageCodes = [];
+  languages.forEach(function (language) {
+    languageCodes.push(language['$'].lang);
   });
-};
-
-/**
- * Generate an entry for translation_webapp.xml from the translation objects added in translation.js.
- * All languages will have the english string, this is a new, untranslated tag.
- *
- * @param key The value for the key element.
- * @param trObj The translation object.
- * @returns {string} A string with the xml entry to be added to translation.xml
- */
-Synci18n.prototype.makeXmlEntry = function (key, trObj) {
-  var languages = this.getLanguages();
-  var xmlEntryString =
-    '    <key distribution="webauthor" value="' + key + '">\r\n' +
-    '        ' + (trObj.comment ? '<comment>' + trObj.comment + '</comment>\r\n' : '<comment/>\r\n');
-  languages.forEach(function(language) {
-    xmlEntryString +=
-      '        <val lang="' + language + '">' + ((trObj[language]) ? trObj[language] : trObj['en_US']) + '</val>\r\n'
-  });
-  xmlEntryString +=
-    '    </key>\r\n';
-  return xmlEntryString;
-};
-
-/**
- * Set the msgs file path.
- * @param msgsFilePath The path of msgs file from options.
- */
-Synci18n.prototype.getMsgsFilePath = function (msgsFilePath) {
-  var filePath = null;
-  if (msgsFilePath) {
-    filePath = msgsFilePath;
-  } else {
-    if (this.webauthorMode) {
-      filePath = this.getDestinationFolder() + '/msgs.js';
-    } else {
-      filePath = this.getDestinationFolder() + '/0translation.js';
-    }
-  }
-  return filePath;
+  return languageCodes;
 };
 
 /**
  * Create the msgs file, which will add the translations so they can be displayed.
  */
-Synci18n.prototype.makeMsgs = function () {
-  var xmlFile = this.getSourceFile();
-  var jsonFile = this.getDestinationFolder() + '/' + path.basename(xmlFile, path.extname(xmlFile)) + '.json';
-
+Synci18n.prototype.generateTranslations = function () {
   var msgsObj = {};
-  var tags = JSON.parse(fs.readFileSync(jsonFile, 'utf8')).translation.key;
+  var tags = this.tags;
   tags.forEach(function (tag) {
     var key = tag['$'].value;
     var value = {};
@@ -126,12 +62,14 @@ Synci18n.prototype.makeMsgs = function () {
     msgsObj[key] = value;
   });
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
-  fs.writeFileSync(this.getMsgsFilePath(), msgsFile, 'utf8');
+  fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 };
 
-Synci18n.prototype.generateTranslations = function () {
-  this.makeTranslationJsons();
-  this.makeMsgs();
+/**
+ * Check the status of the translation file.
+ */
+Synci18n.prototype.checkTranslationStatus = function () {
+
 };
 
 module.exports = Synci18n;
