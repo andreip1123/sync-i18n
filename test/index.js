@@ -63,6 +63,6 @@ describe('testDefaults', function () {
     var synci18n = Synci18n();
     // Weak check for proper default paths.
     synci18n.sourceFile.indexOf('/i18n/translation.xml').should.not.equal(-1);
-    synci18n.destinationFile.indexOf('/web/0translations').should.not.equal(-1);
+    synci18n.destinationFile.indexOf('/web/0translations.js').should.not.equal(-1);
   });
 });

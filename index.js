@@ -12,7 +12,7 @@ function Synci18n(options) {
 
   options = options || {};
   this.sourceFile = options.sourceFile || './i18n/translation.xml';
-  this.destinationFile = options.destinationFile || './web/0translations';
+  this.destinationFile = options.destinationFile || './web/0translations.js';
 
   this.readSourceFile(this.sourceFile);
 }
