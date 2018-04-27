@@ -58,9 +58,24 @@ describe('makeMsgs', function () {
   });
 });
 
+describe('extractTags', function () {
+  it('should extract only the used tags', function () {
+    var synci18n = Synci18n({
+      rootDir: __dirname
+      /*destinationFile: __dirname + '/web/0translations.js',
+      sourceFile: __dirname + '/translation.xml',
+      jsSourcesLocation: __dirname + '/web',
+      javaSourcesLocation: __dirname + '/src'*/
+    });
+    synci18n.extractTags();
+    synci18n.clientTags.length.should.equal(4);
+    synci18n.serverTags.length.should.equal(2);
+  });
+});
+
 describe('testDefaults', function () {
   it('should create at expected default paths', function () {
-    var synci18n = Synci18n();
+    var synci18n = Synci18n({rootDir: __dirname});
     // Weak check for proper default paths.
     synci18n.sourceFile.indexOf('/i18n/translation.xml').should.not.equal(-1);
     synci18n.destinationFile.indexOf('/web/0translations.js').should.not.equal(-1);

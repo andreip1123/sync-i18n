@@ -11,8 +11,11 @@ function Synci18n(options) {
   }
 
   options = options || {};
-  this.sourceFile = options.sourceFile || './i18n/translation.xml';
-  this.destinationFile = options.destinationFile || './web/0translations.js';
+  this.rootDir = options.rootDir || '.';
+  this.sourceFile = options.sourceFile || this.rootDir + '/i18n/translation.xml';
+  this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
+  this.jsSourcesLocation = options.jsSourcesLocation || this.rootDir + '/web';
+  this.javaSourcesLocation = options.javaSourcesLocation || this.rootDir + '/src';
 
   this.readSourceFile(this.sourceFile);
 }
@@ -29,7 +32,7 @@ Synci18n.prototype.readSourceFile = function (sourceFile) {
       this.languages = this.getLanguages(result.translation.languageList[0].language);
     }).bind(this));
   } else {
-    console.log('Source file ' + sourceFile + ' does not exist');
+    console.trace('Source file ' + sourceFile + ' does not exist');
   }
 };
 
@@ -63,6 +66,79 @@ Synci18n.prototype.generateTranslations = function () {
   });
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
+};
+
+/**
+ * Load the tags used client-side and server-side.
+ */
+Synci18n.prototype.extractTags = function () {
+  this.clientTags = this.extractTagsInternal('client');
+  this.serverTags = this.extractTagsInternal('server');
+};
+
+/**
+ * Get the tags of a certain type from the source files.
+ * @param tagsType The type of tags to get.
+ * @return {RegExpMatchArray} The tags found.
+ */
+Synci18n.prototype.extractTagsInternal = function (tagsType) {
+  var fileExt, regex, regexTrim;
+
+  var sourcesPath = '';
+
+  if (tagsType === 'client') {
+    /*
+      Make sure the destination file does not contaminate the tags.
+      It will be recreated.
+     */
+    if (fs.existsSync(this.destinationFile)) {
+      fs.unlinkSync(this.destinationFile);
+    }
+    sourcesPath = this.jsSourcesLocation;
+    fileExt = '.js';
+    regex = /msgs.[A-Za-z|\_]+/g;
+    regexTrim = 'msgs.';
+  } else if (tagsType === 'server') {
+    sourcesPath = this.javaSourcesLocation;
+    fileExt = '.java';
+    regex = /rb.getMessage\(TranslationTags.[A-Za-z|\_]+/g;
+    regexTrim = 'rb.getMessage(TranslationTags.';
+  }
+
+
+  var fileContents = '';
+
+  var recursiveReadDir = function (directory) {
+    var filenames = fs.readdirSync(directory);
+    for (var i = 0; i < filenames.length; i++) {
+      if (path.extname(filenames[i]) === fileExt) {
+        try {
+          fileContents += fs.readFileSync(directory + '/' + filenames[i], 'utf8');
+        } catch (e) {
+          // this is a folder, you can't read a folder, don't be silly!
+        }
+      } else {
+        var isDirectory = fs.lstatSync(directory + '/' + filenames[i]).isDirectory();
+        if (isDirectory) {
+          recursiveReadDir(directory + '/' + filenames[i]);
+        }
+      }
+    }
+  };
+
+  recursiveReadDir(sourcesPath);
+
+  // Find tags.
+  var tagsFromFile = fileContents.match(regex);
+  for (var i = 0; i < tagsFromFile.length; i++) {
+    tagsFromFile[i] = tagsFromFile[i].replace(regexTrim, '');
+  }
+  // Remove duplicates.
+  tagsFromFile = tagsFromFile.filter(function(item, pos) {
+    return tagsFromFile.indexOf(item) === pos;
+  });
+
+  return tagsFromFile;
 };
 
 /**
