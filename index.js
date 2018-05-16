@@ -28,8 +28,10 @@ Synci18n.prototype.readSourceFile = function (sourceFile) {
     var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
     var parser = new xml2js.Parser();
     parser.parseString(xmlFileContent, (function(err, result) {
-      this.tags = result.translation.key;
-      this.languages = this.getLanguages(result.translation.languageList[0].language);
+      if (result) {
+        this.tags = result.translation.key;
+        this.languages = this.getLanguages(result.translation.languageList[0].language);
+      }
     }).bind(this));
   } else {
     console.trace('Source file ' + sourceFile + ' does not exist');
@@ -53,16 +55,28 @@ Synci18n.prototype.getLanguages = function (languages) {
  */
 Synci18n.prototype.generateTranslations = function () {
   var msgsObj = {};
+  this.extractTags();
+  var clientTags = this.clientTags;
   var tags = this.tags;
   tags.forEach(function (tag) {
     var key = tag['$'].value;
-    var value = {};
+    if (clientTags.indexOf(key) !== -1) {
+      var value = {};
 
-    tag.val.forEach(function (translation) {
-      value[translation['$'].lang] = translation['_'];
-    });
+      tag.val.forEach(function (translation) {
+        value[translation['$'].lang] = translation['_'];
+      });
 
-    msgsObj[key] = value;
+      msgsObj[key] = value;
+    } else if (clientTags.indexOf(key + '_') !== -1) {
+      var value = {};
+
+      tag.val.forEach(function (translation) {
+        value[translation['$'].lang] = translation['_'];
+      });
+
+      msgsObj[key + '_'] = value;
+    }
   });
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
@@ -109,34 +123,41 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
   var fileContents = '';
 
   var recursiveReadDir = function (directory) {
-    var filenames = fs.readdirSync(directory);
-    for (var i = 0; i < filenames.length; i++) {
-      if (path.extname(filenames[i]) === fileExt) {
-        try {
-          fileContents += fs.readFileSync(directory + '/' + filenames[i], 'utf8');
-        } catch (e) {
-          // this is a folder, you can't read a folder, don't be silly!
-        }
-      } else {
-        var isDirectory = fs.lstatSync(directory + '/' + filenames[i]).isDirectory();
-        if (isDirectory) {
-          recursiveReadDir(directory + '/' + filenames[i]);
+    if (fs.existsSync(directory)) {
+      var filenames = fs.readdirSync(directory);
+      for (var i = 0; i < filenames.length; i++) {
+        if (path.extname(filenames[i]) === fileExt) {
+          try {
+            fileContents += fs.readFileSync(directory + '/' + filenames[i], 'utf8');
+          } catch (e) {
+            // this is a folder, you can't read a folder, don't be silly!
+          }
+        } else {
+          var isDirectory = fs.lstatSync(directory + '/' + filenames[i]).isDirectory();
+          if (isDirectory) {
+            recursiveReadDir(directory + '/' + filenames[i]);
+          }
         }
       }
+    } else {
+      console.error('[' + tagsType + ']' + ' Could not find ', directory);
     }
+
   };
 
   recursiveReadDir(sourcesPath);
 
   // Find tags.
   var tagsFromFile = fileContents.match(regex);
-  for (var i = 0; i < tagsFromFile.length; i++) {
-    tagsFromFile[i] = tagsFromFile[i].replace(regexTrim, '');
+  if (tagsFromFile) {
+    for (var i = 0; i < tagsFromFile.length; i++) {
+      tagsFromFile[i] = tagsFromFile[i].replace(regexTrim, '');
+    }
+    // Remove duplicates.
+    tagsFromFile = tagsFromFile.filter(function(item, pos) {
+      return tagsFromFile.indexOf(item) === pos;
+    });
   }
-  // Remove duplicates.
-  tagsFromFile = tagsFromFile.filter(function(item, pos) {
-    return tagsFromFile.indexOf(item) === pos;
-  });
 
   return tagsFromFile;
 };

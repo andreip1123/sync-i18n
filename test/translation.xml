@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- IMPORTANT: if you want to add a new Tag for translations, please use the translation.js file: http://wiki.sync.ro/wiki/WebappTranslation . -->
+<!-- Fragments such as {$APP_NAME} are variables and will be replaced with content, should be left untranslated, but moved according to syntax. -->
+<translation>
+    <languageList>
+        <language description="English" lang="en_US" localeDescription="English"/>
+        <language description="German" lang="de_DE" localeDescription="Deutsch"/>
+        <language description="French" lang="fr_FR" localeDescription="Français"/>
+        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>
+        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>
+    </languageList>
+    <key distribution="webauthor" value="RESTART_SERVER_">
+        <comment>The label of the Restart Server button</comment>
+        <val lang="en_US">Restart Server</val>
+        <val lang="de_DE">Restart Server</val>
+        <val lang="fr_FR">Restart Server</val>
+        <val lang="ja_JP">Restart Server</val>
+        <val lang="nl_NL">Restart Server</val>
+    </key>
+    <key distribution="webauthor" value="DEC_">
+        <comment>December</comment>
+        <val lang="en_US">December</val>
+        <val lang="de_DE">Dezember</val>
+        <val lang="fr_FR">décembre</val>
+        <val lang="ja_JP">December</val>
+        <val lang="nl_NL">december</val>
+    </key>
+    <key distribution="webauthor" value="NOV">
+        <comment>December</comment>
+        <val lang="en_US">November</val>
+        <val lang="de_DE">November</val>
+        <val lang="fr_FR">November</val>
+        <val lang="ja_JP">November</val>
+        <val lang="nl_NL">November</val>
+    </key>
+</translation>
