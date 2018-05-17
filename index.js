@@ -50,34 +50,38 @@ Synci18n.prototype.getLanguages = function (languages) {
   return languageCodes;
 };
 
+Synci18n.prototype.getTagMap = function () {
+  var allTags = {};
+  this.tags.forEach(function (tagObj) {
+    allTags[tagObj['$'].value] = tagObj;
+  });
+  return allTags;
+};
+
 /**
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.generateTranslations = function () {
   var msgsObj = {};
   this.extractTags();
-  var clientTags = this.clientTags;
-  var tags = this.tags;
-  tags.forEach(function (tag) {
-    var key = tag['$'].value;
-    if (clientTags.indexOf(key) !== -1) {
-      var value = {};
+  var allTagsFromTranslationFile = this.getTagMap();
 
-      tag.val.forEach(function (translation) {
+  this.clientTags.forEach(function (clientSideTag) {
+    if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
+      var tagObj = allTagsFromTranslationFile[clientSideTag];
+      var value = {};
+      tagObj.val.forEach(function (translation) {
         value[translation['$'].lang] = translation['_'];
       });
-
-      msgsObj[key] = value;
-    } else if (clientTags.indexOf(key + '_') !== -1) {
-      var value = {};
-
-      tag.val.forEach(function (translation) {
-        value[translation['$'].lang] = translation['_'];
-      });
-
-      msgsObj[key + '_'] = value;
+      msgsObj[clientSideTag] = value;
+    } else {
+      // TODO: maybe fallback to check other formats.
+      console.warn('Could not find exact key (' + clientSideTag + ') in translation file.');
     }
   });
+
+  // TODO: write the server side tags only in the target translation.xml
+
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 };
