@@ -14,6 +14,7 @@ function Synci18n(options) {
   this.rootDir = options.rootDir || '.';
   this.sourceFile = options.sourceFile || this.rootDir + '/i18n/translation.xml';
   this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
+  //this.javaDestinationFile = ...
   this.jsSourcesLocation = options.jsSourcesLocation || this.rootDir + '/web';
   this.javaSourcesLocation = options.javaSourcesLocation || this.rootDir + '/src';
 
@@ -39,6 +40,50 @@ Synci18n.prototype.readSourceFile = function (sourceFile) {
 };
 
 /**
+ * Make a simpler object containing only a map of messages to languages from the translation object.
+ * @param trObj The translation object.
+ * @return {{}} The simplified object containing only messages.
+ */
+Synci18n.prototype.getMessages = function (trObj) {
+  var messages = {};
+  var trObjMessages = trObj['val'];
+  trObjMessages.forEach(function (trObjMessage) {
+    var currentLanguage = trObjMessage['$'].lang;
+    if (this.languages.indexOf(currentLanguage) !== -1) {
+      messages[currentLanguage] = trObjMessage['_'];
+    }
+  }, this);
+  return messages;
+};
+
+/**
+ * Transform the translation object back to XML.
+ * Used when writing the translation.xml file which contains only the server-side tags.
+ * @param {string} tag The translation tag, should preferably be like "Server_side_tag_format".
+ * @param trObj The translation object.
+ * @return {string} The xml element to be added to the final translation.xml
+ */
+Synci18n.prototype.makeXmlEntry = function (tag, trObj) {
+  var xmlEntryString =
+    '    <key distribution="webauthor" value="' + tag + '">\r\n' +
+    '        ' + (trObj.comment ? '<comment>' + trObj.comment + '</comment>\r\n' : '<comment/>\r\n');
+
+  var messages = this.getMessages(trObj);
+  this.languages.forEach(function(language) {
+    var message = messages[language];
+    if (!message) {
+      message = messages['en_US'] || 'translation_error';
+    }
+    xmlEntryString +=
+      '        <val lang="' + language + '">' + message + '</val>\r\n'
+  });
+  xmlEntryString +=
+    '    </key>\r\n';
+
+  return xmlEntryString;
+};
+
+/**
  * Get the list of language codes from the xml file.
  * @returns {Array.<String>} The list of language codes.
  */
@@ -50,11 +95,30 @@ Synci18n.prototype.getLanguages = function (languages) {
   return languageCodes;
 };
 
+/**
+ * Strip the tag name of its personality, turn it into lowercase and remove trailing underline.
+ * @param {string} tagName The tag name to be processed.
+ * @return {string} The uniform tag name.
+ */
+Synci18n.prototype.getUniformTagName = function (tagName) {
+  var uniformTagName = tagName.toLowerCase();
+  if (uniformTagName[uniformTagName.length - 1] === '_') {
+    uniformTagName = uniformTagName.slice(0, -1);
+  }
+  return uniformTagName;
+};
+
+/**
+ * Get a map of all tags, where the uniform tag name is the key and
+ * the value is the translation object as read from the translation.xml file.
+ *
+ * @return {{}} Map of all tags.
+ */
 Synci18n.prototype.getTagMap = function () {
   var allTags = {};
   this.tags.forEach(function (tagObj) {
-    allTags[tagObj['$'].value] = tagObj;
-  });
+    allTags[this.getUniformTagName(tagObj['$'].value)] = tagObj;
+  }, this);
   return allTags;
 };
 
@@ -66,9 +130,11 @@ Synci18n.prototype.generateTranslations = function () {
   this.extractTags();
   var allTagsFromTranslationFile = this.getTagMap();
 
+  var uniformTagName;
   this.clientTags.forEach(function (clientSideTag) {
-    if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
-      var tagObj = allTagsFromTranslationFile[clientSideTag];
+    uniformTagName = this.getUniformTagName(clientSideTag);
+    if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
+      var tagObj = allTagsFromTranslationFile[uniformTagName];
       var value = {};
       tagObj.val.forEach(function (translation) {
         value[translation['$'].lang] = translation['_'];
@@ -78,12 +144,28 @@ Synci18n.prototype.generateTranslations = function () {
       // TODO: maybe fallback to check other formats.
       console.warn('Could not find exact key (' + clientSideTag + ') in translation file.');
     }
-  });
+  }, this);
 
-  // TODO: write the server side tags only in the target translation.xml
+  var extractedServerTags = [];
+  this.serverTags.forEach(function (serverSideTag) {
+    uniformTagName = this.getUniformTagName(serverSideTag);
+    if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
+      extractedServerTags.push(allTagsFromTranslationFile[uniformTagName]);
+    } else {
+      console.log('One server tag is used but cannot be found in the translation file, ', serverSideTag);
+    }
+  }, this);
+
+  console.log('extracted server tags ', extractedServerTags);
+  console.log('extracted server tags2 ', JSON.stringify(extractedServerTags[0]));
+  console.log('would write to xml: ', this.makeXmlEntry(extractedServerTags[0]['$'].value, extractedServerTags[0]));
 
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
+
+  // TODO: write the server side tags only in the target translation.xml
+
+
 };
 
 /**

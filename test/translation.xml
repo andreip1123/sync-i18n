@@ -26,11 +26,19 @@
         <val lang="nl_NL">december</val>
     </key>
     <key distribution="webauthor" value="NOV">
-        <comment>December</comment>
+        <comment>November</comment>
         <val lang="en_US">November</val>
         <val lang="de_DE">November</val>
         <val lang="fr_FR">November</val>
         <val lang="ja_JP">November</val>
         <val lang="nl_NL">November</val>
+    </key>
+    <key distribution="webauthor" value="July_flowers">
+        <comment>July flowers</comment>
+        <val lang="en_US">July flowers</val>
+        <val lang="de_DE">July flowers</val>
+        <val lang="fr_FR">July flowers</val>
+        <val lang="ja_JP">July flowers</val>
+        <val lang="nl_NL">July flowers</val>
     </key>
 </translation>
