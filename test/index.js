@@ -4,6 +4,18 @@ var fs = require('fs');
 
 var sourceFile = './test/translation.xml';
 
+var mockTrObj = {
+  "$":{"distribution":"webauthor","value":"DEC_"},
+  "comment":["December"],
+  "val":[
+    {"_":"December","$":{"lang":"en_US"}},
+    {"_":"Dezember","$":{"lang":"de_DE"}},
+    {"_":"décembre","$":{"lang":"fr_FR"}},
+    {"_":"December","$":{"lang":"ja_JP"}},
+    {"_":"december","$":{"lang":"nl_NL"}}
+  ]
+};
+
 describe('readSourceFile', function () {
   it('should read source file properly', function () {
     var destinationFile = __dirname + '/temp/22translations.js';
@@ -108,19 +120,31 @@ describe('getMessages', function () {
       sourceFile: sourceFile
     });
 
-    var mockTrObj = {
-      "$":{"distribution":"webauthor","value":"DEC_"},
-      "comment":["December"],
-      "val":[
-        {"_":"December","$":{"lang":"en_US"}},
-        {"_":"Dezember","$":{"lang":"de_DE"}},
-        {"_":"décembre","$":{"lang":"fr_FR"}},
-        {"_":"December","$":{"lang":"ja_JP"}},
-        {"_":"december","$":{"lang":"nl_NL"}}
-      ]
-    };
-
     synci18n.getMessages(mockTrObj).should.eql({
+      en_US: 'December',
+      de_DE: 'Dezember',
+      fr_FR: 'décembre',
+      ja_JP: 'December',
+      nl_NL: 'december'
+    });
+  });
+});
+
+describe('getMsgsObjectForTag', function () {
+  it('should get the messages from the translation object', function () {
+    var synci18n = Synci18n({
+      sourceFile: sourceFile
+    });
+
+    synci18n.getMsgsObjectForTag(mockTrObj).should.eql({
+      en_US: 'December',
+      de_DE: 'Dezember',
+      fr_FR: 'décembre',
+      nl_NL: 'december'
+    });
+
+    // Do not remove duplicate messages, will contain all languages.
+    synci18n.getMsgsObjectForTag(mockTrObj, true).should.eql({
       en_US: 'December',
       de_DE: 'Dezember',
       fr_FR: 'décembre',

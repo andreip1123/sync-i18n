@@ -123,28 +123,65 @@ Synci18n.prototype.getTagMap = function () {
 };
 
 /**
- * Create the msgs file, which will add the translations so they can be displayed.
+ * Generate the msgs object.
+ * @return { TAG1_: {en_US: '', fr_FR: ''}, TAG2_: {en_US: '', fr_FR: ''}, ...}
  */
-Synci18n.prototype.generateTranslations = function () {
+Synci18n.prototype.getMsgsObject = function () {
   var msgsObj = {};
-  this.extractTags();
+  var uniformTagName;
   var allTagsFromTranslationFile = this.getTagMap();
 
-  var uniformTagName;
   this.clientTags.forEach(function (clientSideTag) {
     uniformTagName = this.getUniformTagName(clientSideTag);
     if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
       var tagObj = allTagsFromTranslationFile[uniformTagName];
-      var value = {};
-      tagObj.val.forEach(function (translation) {
-        value[translation['$'].lang] = translation['_'];
-      });
-      msgsObj[clientSideTag] = value;
+      msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
     } else {
       // TODO: maybe fallback to check other formats.
       console.warn('Could not find exact key (' + clientSideTag + ') in translation file.');
     }
   }, this);
+  return msgsObj;
+};
+
+/**
+ * Generate the object which will be added to the msgs object for a tag.
+ * @param tagObj The translation object as read from the translation file.
+ * @param [duplicateMessages] Whether this object will include messages for all languages
+ * even if they are duplicates of the english message.
+ * False by default, will lighten the translation payload slightly.
+ * @return {{Object}} Object containing the messages for a certain tag, looks like: {en_US: '...', fr_FR: '...'}
+ */
+Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
+  var value = {};
+  // Get all messages for all languages.
+  tagObj.val.forEach(function (translation) {
+    value[translation['$'].lang] = translation['_'];
+  });
+
+  // Drop duplicate messages to save bandwidth.
+  var fallbackLanguage = 'en_US';
+  if (!duplicateMessages) {
+    var fallbackMessage = value[fallbackLanguage];
+    var languages = this.languages;
+    languages.forEach(function (lang) {
+      if (lang !== fallbackLanguage && value[lang] === fallbackMessage) {
+        delete value[lang];
+      }
+    });
+  }
+  return value;
+};
+
+/**
+ * Create the msgs file, which will add the translations so they can be displayed.
+ */
+Synci18n.prototype.generateTranslations = function () {
+  this.extractTags();
+  var allTagsFromTranslationFile = this.getTagMap();
+
+  var uniformTagName;
+  var msgsObj = this.getMsgsObject();
 
   var extractedServerTags = [];
   this.serverTags.forEach(function (serverSideTag) {
