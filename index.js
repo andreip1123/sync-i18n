@@ -12,30 +12,80 @@ function Synci18n(options) {
 
   options = options || {};
   this.rootDir = options.rootDir || '.';
-  this.sourceFile = options.sourceFile || this.rootDir + '/i18n/translation.xml';
+  this.sourceFiles = this.getSourceFiles(options);
   this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
   //this.javaDestinationFile = ...
   this.jsSourcesLocation = options.jsSourcesLocation || this.rootDir + '/web';
   this.javaSourcesLocation = options.javaSourcesLocation || this.rootDir + '/src';
 
-  this.readSourceFile(this.sourceFile);
+  this.keepNewlinesAndTabs = options.keepNewLinesAndTabs;
+
+  this.readSourceFiles(this.sourceFiles);
 }
+
+/**
+ * Get the source files from the options.
+ * If not properly defined, go to fallbacks and show warnings.
+ * @param options The options object.
+ * @returns {Array<string>} The list of source files.
+ */
+Synci18n.prototype.getSourceFiles = function (options) {
+  var sourceFiles = [];
+  var defaultSourceFile = this.rootDir + '/i18n/translation.xml';
+  if (Array.isArray(options.sourceFiles)) {
+    sourceFiles.forEach(function(fileToCheck){
+      if (!fs.existsSync(fileToCheck)) {
+        console.warn('Source file does not exist: ' + fileToCheck);
+      }
+    });
+    sourceFiles = options.sourceFiles;
+  } else {
+    if (options.sourceFiles) {
+      if (fs.existsSync(options.sourceFiles)) {
+        sourceFiles = [options.sourceFiles];
+      } else {
+        console.warn('Source file does not exist: ' + options.sourceFiles);
+        console.warn('Falling back to ' + defaultSourceFile);
+        sourceFiles = [defaultSourceFile];
+      }
+    }
+    if (options.sourceFile) {
+      if (fs.existsSync(options.sourceFile)) {
+        sourceFiles = [options.sourceFile];
+      } else {
+        console.warn('Source file does not exist: ' + options.sourceFile);
+        console.warn('Falling back to ' + defaultSourceFile);
+        sourceFiles = [defaultSourceFile];
+      }
+    } else {
+      if (!fs.existsSync(defaultSourceFile)) {
+        console.log('Source file does not exist: ' + defaultSourceFile)
+      }
+      sourceFiles = [defaultSourceFile];
+    }
+  }
+  return sourceFiles;
+};
 
 /**
  * Read the source file and save its contents.
  */
-Synci18n.prototype.readSourceFile = function (sourceFile) {
-  if (fs.existsSync(sourceFile)) {
-    var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
-    var parser = new xml2js.Parser();
-    parser.parseString(xmlFileContent, (function(err, result) {
-      if (result) {
-        this.tags = result.translation.key;
-        this.languages = this.getLanguages(result.translation.languageList[0].language);
-      }
-    }).bind(this));
-  } else {
-    console.trace('Source file ' + sourceFile + ' does not exist');
+Synci18n.prototype.readSourceFiles = function (sourceFiles) {
+  for (var i = 0; i < sourceFiles.length; i++) {
+    var sourceFile = sourceFiles[i];
+    if (fs.existsSync(sourceFile)) {
+      console.log('turn down for what directory? ', sourceFile);
+      var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
+      var parser = new xml2js.Parser();
+      parser.parseString(xmlFileContent, (function(err, result) {
+        if (result) {
+          this.tags = result.translation.key;
+          this.languages = this.getLanguages(result.translation.languageList[0].language);
+        }
+      }).bind(this));
+    } else {
+      console.trace('Source file ' + sourceFile + ' does not exist');
+    }
   }
 };
 
@@ -154,9 +204,16 @@ Synci18n.prototype.getMsgsObject = function () {
  */
 Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
   var value = {};
+  var keepNewLinesAndTabs = this.keepNewlinesAndTabs;
+  var removeNewLinesAndTabsFn = this.removeNewlinesAndTabs;
+
   // Get all messages for all languages.
   tagObj.val.forEach(function (translation) {
-    value[translation['$'].lang] = translation['_'];
+    var messageForLanguage = translation['_'];
+    if (!keepNewLinesAndTabs) {
+      messageForLanguage = removeNewLinesAndTabsFn(messageForLanguage);
+    }
+    value[translation['$'].lang] = messageForLanguage;
   });
 
   // Drop duplicate messages to save bandwidth.
@@ -203,6 +260,19 @@ Synci18n.prototype.generateTranslations = function () {
   // TODO: write the server side tags only in the target translation.xml
 
 
+};
+
+/**
+ * Replace newlines and tabs with spaces. Editor does not show them but webapp does.
+ * @param {string} message The translated message to be cleaned up.
+ * @returns {string} The translated message, purged of newlines and tabs.
+ */
+Synci18n.prototype.removeNewlinesAndTabs = function (message) {
+  if(message.indexOf('\n') !== -1) {
+    message = message.replace(/\r?\n\|\r/g, '').replace(/\s\s+/g, ' ');
+    //tagsWithNewlines++;
+  }
+  return message;
 };
 
 /**

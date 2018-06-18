@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- IMPORTANT: if you want to add a new Tag for translations, please use the translation.js file: http://wiki.sync.ro/wiki/WebappTranslation . -->
+<!-- Fragments such as {$APP_NAME} are variables and will be replaced with content, should be left untranslated, but moved according to syntax. -->
+<translation>
+    <languageList>
+        <language description="English" lang="en_US" localeDescription="English"/>
+        <language description="German" lang="de_DE" localeDescription="Deutsch"/>
+        <language description="French" lang="fr_FR" localeDescription="Français"/>
+        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>
+        <language description="Dutch" lang="du_DU" localeDescription="Duderlands"/>
+    </languageList>
+    <key distribution="webauthor" value="APR_">
+        <comment>April</comment>
+        <val lang="en_US">April</val>
+        <val lang="de_DE">April</val>
+        <val lang="fr_FR">avril</val>
+        <val lang="ja_JP">April</val>
+        <val lang="nl_NL">april</val>
+    </key>
+    <key distribution="webauthor" value="MAY_">
+        <comment>May</comment>
+        <val lang="en_US">May</val>
+        <val lang="de_DE">Mai</val>
+        <val lang="fr_FR">mai</val>
+        <val lang="ja_JP">May</val>
+        <val lang="nl_NL">mei</val>
+    </key>
+</translation>

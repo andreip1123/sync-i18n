@@ -24,7 +24,6 @@ describe('readSourceFile', function () {
       sourceFile: sourceFile,
       destinationFile: destinationFile
     });
-    synci18n.readSourceFile(synci18n.sourceFile);
     synci18n.languages.should.have.members([ 'en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL' ]);
     synci18n.tags.length.should.equal(4);
     synci18n.tags[0]['$'].value.should.equal('RESTART_SERVER_');
@@ -93,7 +92,6 @@ describe('extractTags', function () {
       jsSourcesLocation: __dirname + '/web',
       javaSourcesLocation: __dirname + '/src'*/
     });
-    synci18n.readSourceFile(synci18n.sourceFile);
     synci18n.extractTags();
     var clientTags = synci18n.clientTags;
     clientTags.length.should.equal(2);
@@ -109,7 +107,7 @@ describe('testDefaults', function () {
   it('should create at expected default paths', function () {
     var synci18n = Synci18n({rootDir: __dirname});
     // Weak check for proper default paths.
-    synci18n.sourceFile.indexOf('/i18n/translation.xml').should.not.equal(-1);
+    synci18n.getSourceFiles({})[0].indexOf('/i18n/translation.xml').should.not.equal(-1);
     synci18n.destinationFile.indexOf('/web/0translations.js').should.not.equal(-1);
   });
 });
@@ -150,6 +148,46 @@ describe('getMsgsObjectForTag', function () {
       fr_FR: 'décembre',
       ja_JP: 'December',
       nl_NL: 'december'
+    });
+  });
+});
+
+describe('removeNewLinesAndTabs', function () {
+  it('should remove newlines and tabs from messages', function () {
+    var synci18n = Synci18n({
+      sourceFile: sourceFile
+    });
+
+    var mockTrObj = {
+      "$":{"distribution":"webauthor","value":"DEC_"},
+      "comment":["December"],
+      "val":[
+        {"_":"branch, since branching, are applied to the target branch.\n\nYou should synchronize your branch periodically.","$":{"lang":"en_US"}},
+        {"_":"Zielzweig angewandt.\n\n Sie sollten Ihren Zweig regelmäßig synchronisieren","$":{"lang":"de_DE"}},
+        {"_":"branch, since branching, are applied to the target branch.\n\nYou should synchronize your branch periodically.","$":{"lang":"fr_FR"}},
+        {"_":"branch, since branching, are applied to the target branch.\n\nYou should synchronize your branch periodically.","$":{"lang":"ja_JP"}},
+        {"_":"branch, since branching, are applied to the target branch.\n\nYou should synchronize your branch periodically.","$":{"lang":"nl_NL"}}
+      ]
+    };
+
+    var messageWithNewLine = 'Voor als u wilt dat er voor aanvullende details contact met u wordt\n' +
+      '            opgenomen.';
+
+    var mockTrObj2 = {
+      "$":{"distribution":"webauthor","value":"DEC_"},
+      "comment":["December"],
+      "val":[
+        {"_":messageWithNewLine,"$":{"lang":"nl_NL"}}
+      ]
+    };
+
+    synci18n.getMsgsObjectForTag(mockTrObj).should.eql({
+      en_US: 'branch, since branching, are applied to the target branch. You should synchronize your branch periodically.',
+      de_DE: 'Zielzweig angewandt. Sie sollten Ihren Zweig regelmäßig synchronisieren'
+    });
+
+    synci18n.getMsgsObjectForTag(mockTrObj2).should.eql({
+      nl_NL: 'Voor als u wilt dat er voor aanvullende details contact met u wordt opgenomen.'
     });
   });
 });
