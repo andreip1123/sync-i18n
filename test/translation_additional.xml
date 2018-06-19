@@ -25,4 +25,12 @@
         <val lang="ja_JP">May</val>
         <val lang="nl_NL">mei</val>
     </key>
+    <key distribution="webauthor" value="DEC_">
+        <comment>December</comment>
+        <val lang="en_US">December2</val>
+        <val lang="de_DE">Dezember2</val>
+        <val lang="fr_FR">décembre2</val>
+        <val lang="ja_JP">December2</val>
+        <val lang="nl_NL">december2</val>
+    </key>
 </translation>

@@ -11,10 +11,14 @@ function Synci18n(options) {
   }
 
   options = options || {};
+
+  this.tags = [];
+  this.languages = [];
+
   this.rootDir = options.rootDir || '.';
   this.sourceFiles = this.getSourceFiles(options);
   this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
-  //this.javaDestinationFile = ...
+  this.translationXmlDestination = options.translationXmlDestination || this.rootDir + '/target/translation.xml';
   this.jsSourcesLocation = options.jsSourcesLocation || this.rootDir + '/web';
   this.javaSourcesLocation = options.javaSourcesLocation || this.rootDir + '/src';
 
@@ -69,24 +73,45 @@ Synci18n.prototype.getSourceFiles = function (options) {
 
 /**
  * Read the source file and save its contents.
+ * @param {Array<string>} sourceFiles the list of source files.
  */
 Synci18n.prototype.readSourceFiles = function (sourceFiles) {
   for (var i = 0; i < sourceFiles.length; i++) {
     var sourceFile = sourceFiles[i];
     if (fs.existsSync(sourceFile)) {
-      console.log('turn down for what directory? ', sourceFile);
       var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
       var parser = new xml2js.Parser();
       parser.parseString(xmlFileContent, (function(err, result) {
         if (result) {
-          this.tags = result.translation.key;
-          this.languages = this.getLanguages(result.translation.languageList[0].language);
+          this.tags = this.tags.concat(result.translation.key);
+          this.languages = this.languages.concat(this.getLanguages(result.translation.languageList[0].language));
         }
       }).bind(this));
     } else {
       console.trace('Source file ' + sourceFile + ' does not exist');
     }
   }
+  this.languages = this.removeDuplicates(this.languages);
+};
+
+/**
+ * Remove duplicates from array.
+ * @param array The array to remove duplicates from.
+ * @returns {Array} The de-duplicated array.
+ */
+Synci18n.prototype.removeDuplicates = function (array) {
+  var visited = {};
+  var output = [];
+  var len = array.length;
+  var j = 0;
+  for(var i = 0; i < len; i++) {
+    var item = array[i];
+    if(visited[item] !== 1) {
+      visited[item] = 1;
+      output[j++] = item;
+    }
+  }
+  return output;
 };
 
 /**
@@ -204,13 +229,12 @@ Synci18n.prototype.getMsgsObject = function () {
  */
 Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
   var value = {};
-  var keepNewLinesAndTabs = this.keepNewlinesAndTabs;
   var removeNewLinesAndTabsFn = this.removeNewlinesAndTabs;
 
   // Get all messages for all languages.
   tagObj.val.forEach(function (translation) {
     var messageForLanguage = translation['_'];
-    if (!keepNewLinesAndTabs) {
+    if (!this.keepNewlinesAndTabs) {
       messageForLanguage = removeNewLinesAndTabsFn(messageForLanguage);
     }
     value[translation['$'].lang] = messageForLanguage;
@@ -257,8 +281,24 @@ Synci18n.prototype.generateTranslations = function () {
   var msgsFile = '(function(){var msgs=' + JSON.stringify(msgsObj) + '; sync.Translation.addTranslations(msgs);})();';
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 
-  // TODO: write the server side tags only in the target translation.xml
+  var translationXML = '';
+  for (var i = 0; i < extractedServerTags.length; i++) {
+    var extractedServerTag = extractedServerTags[i];
+    translationXML += this.makeXmlEntry(extractedServerTag['$'].value, extractedServerTag);
+  }
 
+
+  fs.writeFileSync(this.translationXmlDestination, '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<!-- IMPORTANT: This file is generated and contains only the subset of messages used on the server-side. -->\n' +
+    '<!-- You should not manually edit this file. -->\n' +
+    '<translation>\n' +
+    '    <languageList>\n' +
+    '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+    '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+    '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+    '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+    '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+    '    </languageList>\n' + translationXML + '</translation>', 'utf8');
 
 };
 

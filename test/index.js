@@ -84,7 +84,6 @@ describe('makeMsgs', function () {
 
 describe('extractTags', function () {
   it('should extract only the used tags', function () {
-    console.log('woob ', __dirname);
     var synci18n = Synci18n({
       /*rootDir: __dirname,*/
       sourceFile: __dirname + '/translation.xml'
@@ -189,5 +188,52 @@ describe('removeNewLinesAndTabs', function () {
     synci18n.getMsgsObjectForTag(mockTrObj2).should.eql({
       nl_NL: 'Voor als u wilt dat er voor aanvullende details contact met u wordt opgenomen.'
     });
+  });
+});
+
+describe('multipleSourceFiles', function () {
+  it('should be able to take multiple source files', function () {
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, './test/translation_additional.xml']
+    });
+    synci18n.tags.length.should.equal(7);
+    synci18n.languages.length.should.equal(6);
+    synci18n.languages.should.eql([ 'en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL', 'du_DU' ]);
+  });
+});
+
+describe('outputTranslationXml', function () {
+  it('should write a translation xml with server tags', function () {
+    var synci18n = Synci18n({
+      sourceFile: sourceFile
+    });
+    var defaultTargetTranslationXml = './target/translation.xml';
+    var customTargetTranslationXml = './target/translation_custom.xml';
+
+    // Delete output of previous test runs.
+    if (fs.existsSync(defaultTargetTranslationXml)) {
+      fs.unlinkSync(defaultTargetTranslationXml);
+    }
+    if (fs.existsSync(customTargetTranslationXml)) {
+      fs.unlinkSync(customTargetTranslationXml);
+    }
+
+
+    // check default path
+    synci18n.translationXmlDestination.should.equal(defaultTargetTranslationXml);
+    synci18n.generateTranslations();
+    fs.existsSync(defaultTargetTranslationXml).should.equal(true);
+
+
+    // Use the output file as the input, should now have only 1 tag.
+    var otherSynci18n = Synci18n({
+      sourceFile: defaultTargetTranslationXml,
+      translationXmlDestination: customTargetTranslationXml
+    });
+
+    otherSynci18n.translationXmlDestination.should.equal(customTargetTranslationXml);
+    otherSynci18n.generateTranslations();
+    otherSynci18n.tags.length.should.equal(1);
+    fs.existsSync(customTargetTranslationXml).should.equal(true);
   });
 });
