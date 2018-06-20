@@ -234,6 +234,8 @@ describe('outputTranslationXml', function () {
     synci18n.generateTranslations();
     fs.existsSync(defaultTargetTranslationXml).should.equal(true);
 
+    // check unused tags
+    synci18n.unusedTags.length.should.equal(1);
 
     // Use the output file as the input, should now have only 1 tag.
     var otherSynci18n = Synci18n({

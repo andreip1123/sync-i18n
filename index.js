@@ -15,6 +15,8 @@ function Synci18n(options) {
   this.tags = [];
   this.languages = [];
 
+  this.unusedTags = [];
+
   this.rootDir = options.rootDir || '.';
   this.sourceFiles = this.getSourceFiles(options);
   this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
@@ -26,6 +28,7 @@ function Synci18n(options) {
   this.cleanTargetXml = options.cleanTargetXml || true;
 
   this.readSourceFiles(this.sourceFiles);
+  this.extractTags();
 }
 
 /**
@@ -301,8 +304,8 @@ Synci18n.prototype.checkForUnusedTags = function () {
   var tagMap = this.getTagMap();
   var unusedTags = [];
 
-  var uniformizedClientTags = this.clientTags.map(this.getUniformTagName);
-  var uniformizedServerTags = this.serverTags.map(this.getUniformTagName);
+  var uniformizedClientTags = this.clientTags ? this.clientTags.map(this.getUniformTagName) : [];
+  var uniformizedServerTags = this.serverTags ? this.serverTags.map(this.getUniformTagName) : [];
 
   for (var tag in tagMap) {
     if (tagMap.hasOwnProperty(tag)) {
@@ -314,6 +317,7 @@ Synci18n.prototype.checkForUnusedTags = function () {
   if (unusedTags.length > 0) {
     console.log('WARNING: ' + unusedTags.length + ' unused tags:');
     console.log(unusedTags);
+    this.unusedTags = unusedTags;
   }
 };
 
@@ -321,7 +325,6 @@ Synci18n.prototype.checkForUnusedTags = function () {
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.generateTranslations = function () {
-  this.extractTags();
   var allTagsFromTranslationFile = this.getTagMap();
 
   var uniformTagName;
