@@ -207,16 +207,26 @@ describe('outputTranslationXml', function () {
     var synci18n = Synci18n({
       sourceFile: sourceFile
     });
-    var defaultTargetTranslationXml = './target/translation.xml';
-    var customTargetTranslationXml = './target/translation_custom.xml';
+    var defaultTargetTranslationXml = './target/i18n/translation.xml';
+    var customTargetTranslationXml = './target_custom/i18n_custom/translation_custom.xml';
 
-    // Delete output of previous test runs.
-    if (fs.existsSync(defaultTargetTranslationXml)) {
-      fs.unlinkSync(defaultTargetTranslationXml);
-    }
-    if (fs.existsSync(customTargetTranslationXml)) {
-      fs.unlinkSync(customTargetTranslationXml);
-    }
+    var rmDir = function(dirPath) {
+      try { var files = fs.readdirSync(dirPath); }
+      catch(e) { return; }
+      if (files.length > 0)
+        for (var i = 0; i < files.length; i++) {
+          var filePath = dirPath + '/' + files[i];
+          if (fs.statSync(filePath).isFile())
+            fs.unlinkSync(filePath);
+          else
+            rmDir(filePath);
+        }
+      fs.rmdirSync(dirPath);
+    };
+
+    // Delete output of previous test runs, tests directory creation if non-existent.
+    rmDir('./target');
+    rmDir('./target_custom');
 
 
     // check default path
@@ -235,5 +245,27 @@ describe('outputTranslationXml', function () {
     otherSynci18n.generateTranslations();
     otherSynci18n.tags.length.should.equal(1);
     fs.existsSync(customTargetTranslationXml).should.equal(true);
+  });
+});
+
+describe('customStringifyFunction', function () {
+  it('should make valid objects, trimming quotes where possible', function () {
+    var synci18n = Synci18n({
+      sourceFile: sourceFile
+    });
+    var input = {en_US: 'July flowers', de_DE: 'July flowers'};
+    synci18n.stringify(input).should.equal('{en_US:"July flowers",de_DE:"July flowers"}');
+    input = {
+      some_tag_name: {en_US: 'July flowers', de_DE: 'July flowers'},
+      some_other_name: {ja_JP: 'flowers', fr_FR: 'flowers'}
+    };
+    synci18n.stringify(input).should.equal('{some_tag_name:{en_US:"July flowers",de_DE:"July flowers"},some_other_name:{ja_JP:"flowers",fr_FR:"flowers"}}');
+    input = {
+      "invalid-tag-name": "www",
+      "invalid.tag.name": "another one",
+      "1.invalid": "this one has a number",
+      valid_tag: "why not"
+    };
+    synci18n.stringify(input).should.equal('{"invalid-tag-name":"www","invalid.tag.name":"another one","1.invalid":"this one has a number",valid_tag:"why not"}');
   });
 });
