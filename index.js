@@ -322,6 +322,32 @@ Synci18n.prototype.checkForUnusedTags = function () {
 };
 
 /**
+ * Create directories to fill out a path.
+ * Stops if it goes up 3 levels and does not reach an existing directory.
+ * @param targetPath The directory path to be created.
+ */
+Synci18n.prototype.makeDirectory = function (targetPath) {
+  if (!fs.existsSync(targetPath)) {
+    var poppedSegments = [];
+    var sanityPath = targetPath;
+    var counter = 0;
+    while (!fs.existsSync(sanityPath) && counter < 3) {
+      sanityPath = sanityPath.split(path.sep);
+      poppedSegments.unshift(sanityPath.pop());
+      sanityPath = sanityPath.join(path.sep);
+      counter++;
+      if (counter >= 3) {
+        console.log('Went up 3 parents to find a starting point, giving up.');
+      }
+    }
+    for (var i = 0; i < poppedSegments.length; i++) {
+      sanityPath += path.sep + poppedSegments[i];
+      fs.mkdirSync(sanityPath);
+    }
+  }
+};
+
+/**
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.generateTranslations = function () {
@@ -330,6 +356,8 @@ Synci18n.prototype.generateTranslations = function () {
   var uniformTagName;
   var msgsObj = this.getMsgsObject();
   var msgsFile = '(function(){var msgs=' + this.stringify(msgsObj) + ';sync.Translation.addTranslations(msgs);})();';
+  // Make parent directories if necessary.
+  this.makeDirectory(path.resolve(path.dirname(this.destinationFile)));
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 
   if (this.serverTags && this.serverTags.length > 0) {
@@ -352,24 +380,7 @@ Synci18n.prototype.generateTranslations = function () {
 
     var targetPath = path.resolve(path.dirname(this.translationXmlDestination));
     console.log('Creating folder', targetPath);
-    if (!fs.existsSync(targetPath)) {
-      var poppedSegments = [];
-      var sanityPath = targetPath;
-      var counter = 0;
-      while (!fs.existsSync(sanityPath) && counter < 3) {
-        sanityPath = sanityPath.split(path.sep);
-        poppedSegments.unshift(sanityPath.pop());
-        sanityPath = sanityPath.join(path.sep);
-        counter++;
-        if (counter >= 3) {
-          console.log('Went up 3 parents to find a starting point, giving up.');
-        }
-      }
-      for (var i = 0; i < poppedSegments.length; i++) {
-        sanityPath += path.sep + poppedSegments[i];
-        fs.mkdirSync(sanityPath);
-      }
-    }
+    this.makeDirectory(targetPath);
 
     var generatedFileWarning = '';
     if (!this.cleanTargetXml) {
