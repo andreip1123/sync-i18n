@@ -271,3 +271,39 @@ describe('customStringifyFunction', function () {
     synci18n.stringify(input).should.equal('{"invalid-tag-name":"www","invalid.tag.name":"another one","1.invalid":"this one has a number",valid_tag:"why not"}');
   });
 });
+
+describe('webauthorMsgsFormat', function () {
+  it('should provide msgs, and initialize window.supportedLanguages', function () {
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, './test/translation_additional.xml'],
+      webAuthorMode: true
+    });
+
+    var contains = function (sourceString, containedString) {
+      return sourceString.indexOf(containedString) !== -1;
+    };
+
+    // web author case.
+    synci18n.generateTranslations();
+    synci18n.supportedLanguages.length.should.equal(6);
+    fs.existsSync(synci18n.destinationFile);
+    var msgsFile = fs.readFileSync(synci18n.destinationFile, 'utf8');
+    contains(msgsFile, 'goog.provide("msgs")').should.equal(true);
+    contains(msgsFile, 'window.supportedLanguages=').should.equal(true);
+
+    contains(msgsFile, '(function(){').should.equal(false);
+    contains(msgsFile, 'sync.Translation.addTranslations(').should.equal(false);
+
+
+    // normal case.
+    synci18n.webAuthorMode = false;
+    synci18n.generateTranslations();
+    synci18n.supportedLanguages.length.should.equal(6);
+    msgsFile = fs.readFileSync(synci18n.destinationFile, 'utf8');
+    contains(msgsFile, 'goog.provide("msgs")').should.equal(false);
+    contains(msgsFile, 'window.supportedLanguages=').should.equal(false);
+
+    contains(msgsFile, '(function(){').should.equal(true);
+    contains(msgsFile, 'sync.Translation.addTranslations(').should.equal(true);
+  });
+});
