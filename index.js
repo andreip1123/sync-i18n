@@ -12,6 +12,7 @@ function Synci18n(options) {
 
   options = options || {};
 
+  this.stats = {};
   this.tags = [];
   this.languages = [];
   this.supportedLanguages = [];
@@ -248,6 +249,7 @@ Synci18n.prototype.getMsgsObject = function () {
     if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
       var tagObj = allTagsFromTranslationFile[uniformTagName];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
+      this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
     } else {
       // TODO: maybe fallback to check other formats, before considering it not found.
       tagsNotInXml.push(clientSideTag);
@@ -529,14 +531,15 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
   // Find tags.
   var tagsFromFile = fileContents.match(regex);
   if (tagsFromFile) {
-    for (var i = 0; i < tagsFromFile.length; i++) {
+    tagsFromFile = tagsFromFile.map(function (tag) {
       if (tagsType === 'server') {
-        tagsFromFile[i] = tagsFromFile[i].replace(regexTrim, '');
+        return tag.replace(regexTrim, '');
       } else {
-        tagsFromFile[i] = tagsFromFile[i].substring(tagsFromFile[i].indexOf('(') + 1);
-        tagsFromFile[i] = tagsFromFile[i].replace('msgs.', '');
+        tag = tag.substring(tag.indexOf('(') + 1);
+        return tag.replace('msgs.', '');
       }
-    }
+    });
+
     // Remove duplicates.
     tagsFromFile = tagsFromFile.filter(function(item, pos) {
       return tagsFromFile.indexOf(item) === pos;
@@ -544,6 +547,85 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
   }
 
   return tagsFromFile;
+};
+
+/**
+ * Get the variables from a translation string.
+ * Detects the following formats: ${EXAMPLE_VARIABLE} or {0} or {VARIABLE_NAME}
+ *
+ * @param message The translated message to check for variables
+ *
+ * @returns {?string[]} Array with variables or null.
+ */
+Synci18n.prototype.checkForVariables = function (message) {
+  return message.match(/(\{\$([A-Z|a-z|\_]*)\}|\{[A-Z|a-z|\_|0-9]*\})+?/g);
+};
+
+/**
+ * Show variable inconsistencies in the console.
+ * @param tagFinalForm The tag to be checked.
+ * @param tagName The name of the tag to check.
+ */
+Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagName) {
+  var englishVariables = this.checkForVariables(tagFinalForm['en_US']);
+  var variables = [];
+
+  var numberOfVariableInconsistencies = {};
+  var nameOfVariableInconsistencies = {};
+  for (var i = 0; i < this.languages.length; i++) {
+    var lang = this.languages[i];
+    if (lang !== 'en_US') {
+      if (tagFinalForm[lang]) {
+        variables = this.checkForVariables(tagFinalForm[lang]);
+        if (variables) {
+          if (variables.length !== englishVariables.length) {
+            if (!numberOfVariableInconsistencies[tagName]) {
+              numberOfVariableInconsistencies[tagName] = ['en_US ' + englishVariables.length + ' ' + englishVariables];
+            }
+            numberOfVariableInconsistencies[tagName].push(lang + ' ' + variables.length + ' ' + variables);
+          } else {
+            var nameInconsistencyFound = false;
+            variables.forEach(function (variable) {
+              if(englishVariables.indexOf(variable) === -1) {
+                if (!nameOfVariableInconsistencies[tagName]) {
+                  nameOfVariableInconsistencies[tagName] = ['en_US ' + englishVariables];
+                }
+                nameInconsistencyFound = true;
+              }
+            });
+            if (nameInconsistencyFound) {
+              nameOfVariableInconsistencies[tagName].push(lang + ' ' + variables);
+            }
+          }
+        }
+      } else {
+        // This message falls back to english so it cannot be inconsistent.
+        // console.log(tagName, ' falls back to english for ', lang);
+      }
+
+    }
+  }
+
+  if (Object.keys(numberOfVariableInconsistencies).length > 0) {
+    console.log('Variable number inconsistencies: ');
+    for (var t in numberOfVariableInconsistencies) {
+      console.log(t);
+      numberOfVariableInconsistencies[t].forEach(function (languageAndNumber) {
+        console.log('  ' + languageAndNumber);
+      });
+    }
+    this.stats.numberOfVariableInconsistencies = numberOfVariableInconsistencies;
+  }
+
+  if (Object.keys(nameOfVariableInconsistencies).length > 0) {
+    console.log('Variable name inconsistencies: ');
+    for (var n in nameOfVariableInconsistencies) {
+      nameOfVariableInconsistencies[n].forEach(function (languageAndName) {
+        console.log('  ' + languageAndName);
+      });
+    }
+    this.stats.nameOfVariableInconsistencies = nameOfVariableInconsistencies;
+  }
 };
 
 /**

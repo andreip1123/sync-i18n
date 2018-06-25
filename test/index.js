@@ -307,3 +307,69 @@ describe('webauthorMsgsFormat', function () {
     contains(msgsFile, 'sync.Translation.addTranslations(').should.equal(true);
   });
 });
+
+describe('testVariableRegex', function () {
+  it('should properly detect variables in messages', function () {
+    var synci18n = Synci18n({sourceFile: sourceFile});
+    // This case would consider {$B_END}{$P_END} as one variable.
+    var stringToCheck = '{$B_START}Annuler/Rétablir{$B_END}{$P_END}';
+    var variables = synci18n.checkForVariables(stringToCheck);
+    variables.length.should.equal(3);
+  });
+});
+
+describe('alertIfVariableInconsistency', function () {
+  it('should provide msgs, and initialize window.supportedLanguages', function () {
+    var synci18n = Synci18n({sourceFile: sourceFile});
+
+    // Now contains variable number inconsistencies.
+    var mockObject = {
+      en_US: 'December ${month}',
+      de_DE: 'Dezember ${month} ${day}',
+      fr_FR: 'décembre ${month}',
+      nl_NL: '${month} december ${day}'
+    };
+
+    synci18n.checkForVariables(mockObject.en_US).length.should.equal(1);
+    synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
+    Object.keys(synci18n.stats.numberOfVariableInconsistencies).length.should.equal(1);
+
+    var nrInconsistencies = synci18n.stats.numberOfVariableInconsistencies['TAG_NAME_'];
+    nrInconsistencies.length.should.equal(3);
+    nrInconsistencies[0].should.equal('en_US 1 {month}');
+    (nrInconsistencies.indexOf('de_DE 2 {month},{day}') !== -1).should.equal(true);
+    (nrInconsistencies.indexOf('nl_NL 2 {month},{day}') !== -1).should.equal(true);
+
+    // Now contains variable name inconsistencies.
+    mockObject = {
+      en_US: 'December ${month}',
+      de_DE: 'Dezember ${month}',
+      fr_FR: 'décembre ${montha}',
+      nl_NL: '${montho} december',
+      ja_JP: '${month} december'
+    };
+
+    synci18n.checkForVariables(mockObject.en_US).length.should.equal(1);
+    synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
+    var nameInconsistencies = synci18n.stats.nameOfVariableInconsistencies['TAG_NAME_'];
+    Object.keys(synci18n.stats.nameOfVariableInconsistencies).length.should.equal(1);
+    nameInconsistencies.length.should.equal(3);
+    nameInconsistencies[0].should.equal('en_US {month}');
+    (nameInconsistencies.indexOf('fr_FR {montha}') !== -1).should.equal(true);
+    (nameInconsistencies.indexOf('nl_NL {montho}') !== -1).should.equal(true);
+
+
+    mockObject = {
+      en_US: 'December ${month} ${day}',
+      de_DE: 'Dezember ${month} ${daaayo}',
+      fr_FR: '${day} décembre ${montha}',
+      nl_NL: '${montho} december ${dayo}',
+      ja_JP: '${month} december ${day}'
+    };
+
+    synci18n.checkForVariables(mockObject.en_US).length.should.equal(2);
+    synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
+    Object.keys(synci18n.stats.nameOfVariableInconsistencies).length.should.equal(1);
+    synci18n.stats.nameOfVariableInconsistencies['TAG_NAME_'].length.should.equal(4);
+  });
+});
