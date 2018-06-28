@@ -4,6 +4,23 @@ var fs = require('fs');
 
 var sourceFile = './test/translation.xml';
 
+var deleteIfFileExists = function (filePath) {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
+
+
+var makeXmlEntryWithEnglishMessage = function (tagName, message) {
+  return '<key value="' + tagName + '">\n' +
+    '        <val lang="en_US">' + message + '</val>\n' +
+    '        <val lang="de_DE">' + message + '</val>\n' +
+    '        <val lang="fr_FR">' + message + '</val>\n' +
+    '        <val lang="ja_JP">' + message + '</val>\n' +
+    '        <val lang="nl_NL">' + message + '</val>\n' +
+    '    </key>'
+};
+
 var mockTrObj = {
   "$":{"distribution":"webauthor","value":"DEC_"},
   "comment":["December"],
@@ -29,9 +46,7 @@ describe('readSourceFile', function () {
     synci18n.tags[0]['$'].value.should.equal('RESTART_SERVER_');
     synci18n.tags[1]['$'].value.should.equal('DEC_');
 
-    if (fs.existsSync(destinationFile)) {
-      fs.unlinkSync(destinationFile);
-    }
+    deleteIfFileExists(destinationFile);
 
     synci18n.generateTranslations();
     fs.existsSync(destinationFile).should.equal(true);
@@ -71,9 +86,7 @@ describe('makeMsgs', function () {
       destinationFile: destinationFile
     });
 
-    if (fs.existsSync(destinationFile)) {
-      fs.unlinkSync(destinationFile);
-    }
+    deleteIfFileExists(destinationFile);
 
     synci18n.generateTranslations();
 
@@ -124,6 +137,128 @@ describe('getMessages', function () {
       ja_JP: 'December',
       nl_NL: 'december'
     });
+  });
+});
+
+describe('sourceHasNoTags', function () {
+  it('nulls should be guarded', function () {
+    var folderForNoTagsTest = __dirname + '/web_no_tags';
+    Synci18n.makeDirectory(folderForNoTagsTest);
+
+    var msgsFilePath = folderForNoTagsTest + '/msgs_no_tags.js';
+    var jsSourceFile = folderForNoTagsTest + '/plugin_has_no_tags.js';
+    var jsSourceContent = '(function () { var someText = "har har"; someText += "said the pirate, yarr";})();';
+
+    fs.writeFileSync(jsSourceFile, jsSourceContent, 'utf8');
+
+    var synci18n = Synci18n({
+      sourceFile: sourceFile,
+      jsSourcesLocation: folderForNoTagsTest,
+      destinationFile: msgsFilePath
+    });
+    synci18n.generateTranslations();
+
+    // Msgs file should have no tags, there should be no language properties present.
+    fs.existsSync(msgsFilePath).should.equal(true);
+    var msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    synci18n.languages.should.eql(['en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL']);
+    // Looks like this:
+    msgsFileContents.should.equal('(function(){var msgs={};sync.Translation.addTranslations(msgs);})();');
+    synci18n.languages.forEach(function (langCode) {
+      (msgsFileContents.indexOf(langCode) === -1).should.equal(true);
+    });
+
+    // Clean up the temp files.
+    fs.unlinkSync(msgsFilePath);
+    fs.unlinkSync(jsSourceFile);
+    fs.rmdirSync(folderForNoTagsTest);
+  });
+});
+
+describe('findTagsInString', function () {
+  it('should messages even if tag format does not exactly match', function () {
+    // Check that it will take any tag format.
+    var mockPluginJsContent = '(function () {\n' +
+      '  var someText = tr(msgs.JULY_FLOWERS_);\n' +
+      '  var someText += trDom(msgs.RESTART_SERVER_, tr(msgs.Apr));\n' +
+      '  var someOtherText += trDom(msgs.MAY_) + trDom(msgs.MAY) + trDom(msgs.May) + trDom(msgs.May_);\n' +
+      '  someOtherText += tr(msgs.APR_) + tr(msgs.Apr_) + tr(msgs.APR);\n' +
+      '})();';
+
+    var mockPluginDirectory = __dirname + '/web_tag_formats';
+    Synci18n.makeDirectory(mockPluginDirectory);
+
+    var msgsFilePath = mockPluginDirectory + '/msgs_tag_formats.js';
+    var jsSourceFile = mockPluginDirectory + '/plugin_tag_formats.js';
+
+    fs.writeFileSync(jsSourceFile, mockPluginJsContent, 'utf8');
+
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, './test/translation_additional.xml'],
+      jsSourcesLocation: mockPluginDirectory,
+      destinationFile: msgsFilePath
+    });
+
+    // All formats should be detected and all formats should be present in the msgs file.
+    var expectedTags = ['JULY_FLOWERS_', 'RESTART_SERVER_', 'APR_', 'APR', 'Apr_', 'Apr', 'MAY_', 'MAY', 'May_', 'May'];
+    var tagsFound = synci18n.findTagsInString(mockPluginJsContent, 'client');
+    tagsFound.should.have.members(expectedTags);
+    synci18n.generateTranslations();
+
+    var msgsObj = synci18n.getMsgsObject();
+    Object.keys(msgsObj).should.have.members(expectedTags);
+
+    var tagsShouldHaveSameMessages = function (similarTags) {
+      var j;
+      var initialMessage = msgsObj[similarTags[0]];
+      for (j = 1; j < similarTags.length; j++) {
+        msgsObj[similarTags[j]].should.eql(initialMessage);
+      }
+    };
+
+    // All similar tags should have the same messages, since only one version is defined in the translation file.
+    tagsShouldHaveSameMessages(['APR_', 'APR', 'Apr_', 'Apr']);
+    tagsShouldHaveSameMessages(['MAY_', 'MAY', 'May_', 'May']);
+    var originalMayMessageObj = Object.assign({}, msgsObj['MAY_']);
+
+    // Use another translation file that contains some of these similar tags.
+    var firstMessage = 'This message is slightly different';
+    var secondMessage = 'This message is wildly different';
+    var tempTranslationFile = mockPluginDirectory + '/translation_tag_formats.xml';
+    var someTagsXmlElements = makeXmlEntryWithEnglishMessage('MAY', firstMessage) +
+      makeXmlEntryWithEnglishMessage('May', secondMessage);
+    fs.writeFileSync(tempTranslationFile, Synci18n.makeXmlWithTags(someTagsXmlElements), 'utf8');
+
+    synci18n = Synci18n({
+      sourceFiles: [sourceFile, './test/translation_additional.xml', tempTranslationFile],
+      jsSourcesLocation: mockPluginDirectory,
+      destinationFile: msgsFilePath
+    });
+
+    // Detected tags should not have changed.
+    synci18n.generateTranslations();
+    msgsObj = synci18n.getMsgsObject();
+    tagsFound.should.have.members(Object.keys(msgsObj));
+
+    // "APR_" is the only tag defined in a translation.xml file.
+    // The other formats get the same message via fallback to uniform/generic name.
+    tagsShouldHaveSameMessages(['APR_', 'APR', 'Apr_', 'Apr']);
+
+    // The "May" tag was the last one to overwrite the message. All generics will have this translation.
+    // In this case, the only generic left is "May_".
+    msgsObj['May_'].should.eql(msgsObj['May']);
+    msgsObj['May'].en_US.should.equal(secondMessage);
+    msgsObj['MAY'].en_US.should.equal(firstMessage);
+    // The "May_" tag should have the original translation.
+    msgsObj['MAY_'].should.eql(originalMayMessageObj);
+
+    // Test that it properly grabs the right translation for the tags.
+    // Clean up the temp files.
+    fs.unlinkSync(msgsFilePath);
+    fs.unlinkSync(jsSourceFile);
+    fs.unlinkSync(tempTranslationFile);
+    fs.rmdirSync(mockPluginDirectory);
+
   });
 });
 

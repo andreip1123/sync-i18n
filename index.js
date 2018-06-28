@@ -12,6 +12,15 @@ function Synci18n(options) {
 
   options = options || {};
 
+  this.regex = {
+    client: /(?:tr|trDom)\(msgs\.[A-Za-z|\_|\.]+/g,
+    server: /rb.getMessage\(TranslationTags.[A-Za-z|\_]+/g
+  };
+  this.regexTrim = {
+    client: 'tr(msgs.',
+    server: 'rb.getMessage(TranslationTags.'
+  };
+
   this.stats = {};
   this.tags = [];
   this.languages = [];
@@ -231,6 +240,11 @@ Synci18n.prototype.getTagMap = function () {
   this.tags.forEach(function (tagObj) {
     allTags[this.getUniformTagName(tagObj['$'].value)] = tagObj;
   }, this);
+  this.uniformTags = Object.keys(allTags);
+  // Overwrite the generics with the specifics.
+  this.tags.forEach(function (tagObj) {
+    allTags[tagObj['$'].value] = tagObj;
+  }, this);
   return allTags;
 };
 
@@ -246,19 +260,23 @@ Synci18n.prototype.getMsgsObject = function () {
   var tagsNotInXml = [];
   this.clientTags.forEach(function (clientSideTag) {
     uniformTagName = this.getUniformTagName(clientSideTag);
-    if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
+    if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
+      var tagObj = allTagsFromTranslationFile[clientSideTag];
+      msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
+      this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
+    } else if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
+      // Fallback to check the uniform format, before considering it not found.
       var tagObj = allTagsFromTranslationFile[uniformTagName];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
       this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
+      console.log(clientSideTag, ' falls back to ', uniformTagName);
     } else {
-      // TODO: maybe fallback to check other formats, before considering it not found.
       tagsNotInXml.push(clientSideTag);
     }
   }, this);
 
   if (tagsNotInXml.length > 0) {
-    console.error('Could not find in translation file:');
-    tagsNotInXml.forEach(function (tagNotFound) { console.log(tagNotFound); })
+    console.error('Could not find in translation file:', tagsNotInXml);
   }
   return msgsObj;
 };
@@ -331,19 +349,19 @@ Synci18n.prototype.stringify = function (obj) {
  * These tags will be purged from the output.
  */
 Synci18n.prototype.checkForUnusedTags = function () {
-  var tagMap = this.getTagMap();
+  this.getTagMap();
+  var uniformTags = this.uniformTags;
   var unusedTags = [];
 
   var uniformizedClientTags = this.clientTags ? this.clientTags.map(this.getUniformTagName) : [];
   var uniformizedServerTags = this.serverTags ? this.serverTags.map(this.getUniformTagName) : [];
 
-  for (var tag in tagMap) {
-    if (tagMap.hasOwnProperty(tag)) {
-      if (uniformizedClientTags.indexOf(tag) === -1 && uniformizedServerTags.indexOf(tag) === -1) {
-        unusedTags.push(tag);
-      }
+  uniformTags.forEach(function (tag) {
+    if (uniformizedClientTags.indexOf(tag) === -1 && uniformizedServerTags.indexOf(tag) === -1) {
+      unusedTags.push(tag);
     }
-  }
+  });
+
   if (unusedTags.length > 0 && !this.webAuthorMode) {
     console.log('WARNING: ' + unusedTags.length + ' unused tags:');
     console.log(unusedTags);
@@ -357,7 +375,7 @@ Synci18n.prototype.checkForUnusedTags = function () {
  * Stops if it goes up 3 levels and does not reach an existing directory.
  * @param targetPath The directory path to be created.
  */
-Synci18n.prototype.makeDirectory = function (targetPath) {
+Synci18n.makeDirectory = function (targetPath) {
   if (!fs.existsSync(targetPath)) {
     var poppedSegments = [];
     var sanityPath = targetPath;
@@ -394,10 +412,10 @@ Synci18n.prototype.generateTranslations = function () {
   }
 
   // Make parent directories if necessary.
-  this.makeDirectory(path.resolve(path.dirname(this.destinationFile)));
+  Synci18n.makeDirectory(path.resolve(path.dirname(this.destinationFile)));
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 
-  if (this.serverTags && this.serverTags.length > 0) {
+  if (this.serverTags.length > 0) {
     var extractedServerTags = [];
 
     this.serverTags.forEach(function (serverSideTag) {
@@ -409,35 +427,43 @@ Synci18n.prototype.generateTranslations = function () {
       }
     }, this);
 
-    var translationXML = '';
+    var translationXmlElements = '';
     for (var i = 0; i < extractedServerTags.length; i++) {
       var extractedServerTag = extractedServerTags[i];
-      translationXML += this.makeXmlEntry(extractedServerTag['$'].value, extractedServerTag, true);
+      translationXmlElements += this.makeXmlEntry(extractedServerTag['$'].value, extractedServerTag, true);
     }
 
     var targetPath = path.resolve(path.dirname(this.translationXmlDestination));
     console.log('Creating folder', targetPath);
-    this.makeDirectory(targetPath);
-
-    var generatedFileWarning = '';
-    if (!this.cleanTargetXml) {
-      generatedFileWarning = '<!-- IMPORTANT: This file is generated and contains only the subset of messages used on the server-side. -->\n' +
-        '<!-- You should not manually edit this file. -->\n';
-    }
-
-    fs.writeFileSync(this.translationXmlDestination, '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      generatedFileWarning +
-      '<translation>\n' +
-      '    <languageList>\n' +
-      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
-      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
-      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
-      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
-      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
-      '    </languageList>\n' + translationXML + '</translation>', 'utf8');
+    Synci18n.makeDirectory(targetPath);
+    fs.writeFileSync(this.translationXmlDestination, Synci18n.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
   } else {
     console.log('Could not find server tags');
   }
+};
+
+/**
+ * Wrap the list of tag elements to create a translation.xml file.
+ * @param translationXmlElements {string} List of translation translationXmlElements xml elements.
+ * @param showWarning {boolean|null} Whether to add a comment warning that the file is generated.
+ * @returns {string} The translation.xml file contents.
+ */
+Synci18n.makeXmlWithTags = function (translationXmlElements, showWarning) {
+  var generatedFileWarning = '';
+  if (showWarning) {
+    generatedFileWarning = '<!-- IMPORTANT: This file is generated and contains only the subset of messages used on the server-side. -->\n' +
+      '<!-- You should not manually edit this file. -->\n';
+  }
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    generatedFileWarning +
+    '<translation>\n' +
+    '    <languageList>\n' +
+    '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+    '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+    '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+    '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+    '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+    '    </languageList>\n' + translationXmlElements + '</translation>'
 };
 
 /**
@@ -457,8 +483,8 @@ Synci18n.prototype.removeNewlinesAndTabs = function (message) {
  * Load the tags used client-side and server-side.
  */
 Synci18n.prototype.extractTags = function () {
-  this.clientTags = this.extractTagsInternal('client');
-  this.serverTags = this.extractTagsInternal('server');
+  this.clientTags = this.extractTagsInternal('client') || [];
+  this.serverTags = this.extractTagsInternal('server') || [];
   this.checkForUnusedTags();
 };
 
@@ -482,13 +508,9 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
     }
     sourcesPath = this.jsSourcesLocation;
     fileExt = '.js';
-    regex = /(?:tr|trDom)\(msgs\.[A-Za-z|\_|\.]+/g;
-    regexTrim = 'tr(msgs.';
   } else if (tagsType === 'server') {
     sourcesPath = this.javaSourcesLocation;
     fileExt = '.java';
-    regex = /rb.getMessage\(TranslationTags.[A-Za-z|\_]+/g;
-    regexTrim = 'rb.getMessage(TranslationTags.';
   }
 
 
@@ -528,6 +550,18 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
 
   recursiveReadDir(sourcesPath);
 
+  return this.findTagsInString(fileContents, tagsType);
+};
+
+/**
+ * Apply the regex to a string (all targeted files concatenated usually) to extract the tags.
+ * @param fileContents The string created from concatenating the source files of a certain type.
+ * @param tagsType The type of tags to extract.
+ * @returns {Array<string>} The list of tags found.
+ */
+Synci18n.prototype.findTagsInString = function (fileContents, tagsType) {
+  var regex = this.regex[tagsType];
+  var regexTrim = this.regexTrim[tagsType];
   // Find tags.
   var tagsFromFile = fileContents.match(regex);
   if (tagsFromFile) {
@@ -545,7 +579,6 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
       return tagsFromFile.indexOf(item) === pos;
     });
   }
-
   return tagsFromFile;
 };
 
