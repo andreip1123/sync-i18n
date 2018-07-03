@@ -508,3 +508,37 @@ describe('alertIfVariableInconsistency', function () {
     synci18n.stats.nameOfVariableInconsistencies['TAG_NAME_'].length.should.equal(4);
   });
 });
+
+describe('testSkippedTags', function () {
+  it('should show warning if skipped tags get translated', function () {
+    var skippedTranslationXml = __dirname + '/translation_skipped.xml';
+    deleteIfFileExists(skippedTranslationXml);
+
+    var testSkippedTagsTranslationXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<translation>\n' +
+      '    <languageList>\n' +
+      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+      '    </languageList>\n' +
+      '    <key skipTranslation="true" value="April_flowers">\n' +
+      '        <val lang="en_US">April flowers</val>\n' +
+      '        <val lang="de_DE">Avril flowers</val>\n' +
+      '        <val lang="fr_FR">April flowers</val>\n' +
+      '        <val lang="ja_JP">April flowers</val>\n' +
+      '        <val lang="nl_NL">April flowers</val>\n' +
+      '    </key>\n' +
+      '</translation>';
+    fs.writeFileSync(skippedTranslationXml, testSkippedTagsTranslationXml, 'utf8');
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, skippedTranslationXml]
+    });
+    synci18n.checkTranslationStatus();
+    synci18n.tagSkipInconsistencies.length.should.eql(1);
+    synci18n.tagSkipInconsistencies.should.eql(['April flowers']);
+
+    deleteIfFileExists(skippedTranslationXml);
+  });
+});

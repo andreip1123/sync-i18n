@@ -28,6 +28,8 @@ function Synci18n(options) {
   this.supportedLanguagesMap = {};
 
   this.unusedTags = [];
+  this.tagsNotInXml = [];
+  this.tagSkipInconsistencies = [];
 
   this.rootDir = options.rootDir || '.';
   this.sourceFiles = this.getSourceFiles(options);
@@ -257,7 +259,6 @@ Synci18n.prototype.getMsgsObject = function () {
   var uniformTagName;
   var allTagsFromTranslationFile = this.getTagMap();
 
-  var tagsNotInXml = [];
   this.clientTags.forEach(function (clientSideTag) {
     uniformTagName = this.getUniformTagName(clientSideTag);
     if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
@@ -269,15 +270,15 @@ Synci18n.prototype.getMsgsObject = function () {
       var tagObj = allTagsFromTranslationFile[uniformTagName];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
       this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
-      console.log(clientSideTag, ' falls back to ', uniformTagName);
+
+      if (!this.webAuthorMode) {
+        console.log(clientSideTag, ' falls back to ', uniformTagName);
+      }
     } else {
-      tagsNotInXml.push(clientSideTag);
+      this.tagsNotInXml.push(clientSideTag);
     }
   }, this);
 
-  if (tagsNotInXml.length > 0) {
-    console.error('Could not find in translation file:', tagsNotInXml);
-  }
   return msgsObj;
 };
 
@@ -437,6 +438,8 @@ Synci18n.prototype.generateTranslations = function () {
     console.log('Creating folder', targetPath);
     Synci18n.makeDirectory(targetPath);
     fs.writeFileSync(this.translationXmlDestination, Synci18n.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
+
+    this.checkTranslationStatus();
   } else {
     console.log('Could not find server tags');
   }
@@ -494,7 +497,7 @@ Synci18n.prototype.extractTags = function () {
  * @return {RegExpMatchArray} The tags found.
  */
 Synci18n.prototype.extractTagsInternal = function (tagsType) {
-  var fileExt, regex, regexTrim;
+  var fileExt;
 
   var sourcesPath = '';
 
@@ -521,6 +524,10 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
     if (fs.existsSync(directory)) {
       var filenames = fs.readdirSync(directory);
       for (var i = 0; i < filenames.length; i++) {
+        // Do not detect tags used in the test files of this module.
+        if (filenames[i].indexOf('node_modules') !== -1) {
+          continue;
+        }
         // TODO: use something more powerful to set up exclude paths.
         var filename = path.basename(filenames[i], path.extname(filenames[i]));
         if (fileExt === '.js') {
@@ -661,11 +668,36 @@ Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagNam
   }
 };
 
+Synci18n.prototype.checkTagsSkipped = function () {
+  this.tags.forEach(function (tagObj) {
+    if (tagObj['$'].hasOwnProperty('skipTranslation') && tagObj['$']['skipTranslation'] === 'true') {
+      var msgsObjForTag = this.getMsgsObjectForTag(tagObj);
+      var englishMsg = msgsObjForTag['en_US'];
+      var foundTagSkipFail = false;
+      for (var langCode in msgsObjForTag) {
+        if (englishMsg !== msgsObjForTag[langCode]) {
+          foundTagSkipFail = true;
+        }
+      }
+      if (foundTagSkipFail) {
+        this.tagSkipInconsistencies.push(englishMsg);
+      }
+    }
+  }, this);
+  if (this.tagSkipInconsistencies.length > 0) {
+    console.error('Tags marked with skipTranslation should not be translated', this.tagSkipInconsistencies);
+  }
+};
+
 /**
  * Check the status of the translation file.
  */
 Synci18n.prototype.checkTranslationStatus = function () {
+  this.checkTagsSkipped();
 
+  if (this.tagsNotInXml.length > 0) {
+    console.error('Could not find in translation file:', this.tagsNotInXml);
+  }
 };
 
 module.exports = Synci18n;

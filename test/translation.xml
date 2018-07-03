@@ -33,7 +33,7 @@
         <val lang="ja_JP">November</val>
         <val lang="nl_NL">November</val>
     </key>
-    <key distribution="webauthor" value="July_flowers">
+    <key distribution="webauthor" skipTranslation="true" value="July_flowers">
         <comment>July flowers</comment>
         <val lang="en_US">July flowers</val>
         <val lang="de_DE">July flowers</val>
