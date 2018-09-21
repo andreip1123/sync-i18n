@@ -337,6 +337,43 @@ describe('multipleSourceFiles', function () {
   });
 });
 
+describe('addExceptions', function () {
+  it('should be able to take exceptions on client-side tags', function () {
+
+    var msgsFilePath = __dirname + '/msgs_with_exceptions.js';
+    var synci18n = Synci18n({
+      sourceFiles: [
+        __dirname + '/translation.xml',
+        __dirname + '/translation_additional.xml'
+      ],
+      clientSideExceptions: ['RESTART_SERVER_', 'TAG_NOT_IN_TRANSLATION_FILES_'],
+      destinationFile: msgsFilePath
+    });
+    // No usages of RESTART_SERVER_ should have been found but it should be kept,
+    // because it was specified as an exception.
+    synci18n.extractTags();
+    var clientTags = synci18n.clientTags;
+    clientTags.should.eql(['DEC_', 'NOV', 'RESTART_SERVER_']);
+    clientTags.length.should.equal(3);
+
+    // Exceptions should not get into server tags.
+    var serverTags = synci18n.serverTags;
+    serverTags.length.should.equal(2);
+    serverTags.should.eql(['JULY_FLOWERS', 'DECEMBER']);
+
+    // Follow the exceptions all the way to the msgs file content.
+    synci18n.generateTranslations();
+    var msgsObj = synci18n.getMsgsObject();
+    clientTags.should.have.members(Object.keys(msgsObj));
+
+    var msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    msgsFileContents.should.equal('(function(){var msgs={DEC_:{en_US:"December2",de_DE:"Dezember2",fr_FR:"décembre2",nl_NL:"december2"},NOV:{en_US:"November"},RESTART_SERVER_:{en_US:"Restart Server"}};sync.Translation.addTranslations(msgs);})();');
+
+    fs.existsSync(msgsFilePath).should.equal(true);
+    fs.unlinkSync(msgsFilePath);
+  });
+});
+
 describe('outputTranslationXml', function () {
   it('should write a translation xml with server tags', function () {
     var synci18n = Synci18n({

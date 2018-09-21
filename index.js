@@ -42,6 +42,9 @@ function Synci18n(options) {
   this.keepNewlinesAndTabs = options.keepNewLinesAndTabs;
   this.cleanTargetXml = options.cleanTargetXml || true;
 
+  // These tags will be added even if their usage is not detected (ex: used in frameworks).
+  this.clientSideExceptions = options.clientSideExceptions;
+
   this.readSourceFiles(this.sourceFiles);
   this.extractTags();
 }
@@ -489,6 +492,11 @@ Synci18n.prototype.extractTags = function () {
   this.clientTags = this.extractTagsInternal('client') || [];
   this.serverTags = this.extractTagsInternal('server') || [];
   this.checkForUnusedTags();
+
+  // In case the usage detector fails, or if some usage cannot be detected at this point.
+  if (this.clientSideExceptions) {
+    this.clientTags = this.addExceptions(this.clientTags, this.clientSideExceptions);
+  }
 };
 
 /**
@@ -698,6 +706,26 @@ Synci18n.prototype.checkTranslationStatus = function () {
   if (this.tagsNotInXml.length > 0) {
     console.error('Could not find in translation file:', this.tagsNotInXml);
   }
+};
+
+/**
+ * Add some exceptions - keep certain tags even if no usage was found for them.
+ * Filter out the exception tags which could not be found in the translation xmls.
+ *
+ * @param tagList The tag list to add exceptions to.
+ * @param tagExceptions The tags to be added even if their usage was not detected.
+ * @returns {Array} The new list of tags.
+ */
+Synci18n.prototype.addExceptions = function (tagList, tagExceptions) {
+  // Add tag exception if a translation for it could be found in the source xmls.
+  tagExceptions = tagExceptions.filter(function (tag) {
+    return this.uniformTags.indexOf(this.getUniformTagName(tag)) !== -1;
+  }.bind(this));
+  if (tagExceptions.length > 0) {
+    console.log('The following client-side tags will be added even if not used: ');
+    console.log(tagExceptions);
+  }
+  return this.removeDuplicates(tagList.concat(tagExceptions));
 };
 
 module.exports = Synci18n;
