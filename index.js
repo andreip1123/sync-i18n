@@ -126,6 +126,8 @@ Synci18n.prototype.readSourceFiles = function (sourceFiles) {
           this.tags = this.tags.concat(result.translation.key);
           this.languages = this.languages.concat(this.getLanguages(result.translation.languageList[0].language));
           this.addToSupportedLanguages(result.translation.languageList[0].language);
+        } else {
+          console.error('Could not parse ' + sourceFile + ', check if file is valid XML');
         }
       }).bind(this));
     } else {
@@ -255,22 +257,23 @@ Synci18n.prototype.getTagMap = function () {
 
 /**
  * Generate the msgs object.
- * @return { TAG1_: {en_US: '', fr_FR: ''}, TAG2_: {en_US: '', fr_FR: ''}, ...}
+ * @return {{ TAG1_: {en_US: '', fr_FR: ''}, TAG2_: {en_US: '', fr_FR: ''}, ...}}
  */
 Synci18n.prototype.getMsgsObject = function () {
   var msgsObj = {};
+  var tagObj;
   var uniformTagName;
   var allTagsFromTranslationFile = this.getTagMap();
 
   this.clientTags.forEach(function (clientSideTag) {
     uniformTagName = this.getUniformTagName(clientSideTag);
     if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
-      var tagObj = allTagsFromTranslationFile[clientSideTag];
+      tagObj = allTagsFromTranslationFile[clientSideTag];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
       this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
     } else if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
       // Fallback to check the uniform format, before considering it not found.
-      var tagObj = allTagsFromTranslationFile[uniformTagName];
+      tagObj = allTagsFromTranslationFile[uniformTagName];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
       this.alertIfVariableInconsistency(msgsObj[clientSideTag], clientSideTag);
 
