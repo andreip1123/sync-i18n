@@ -579,3 +579,53 @@ describe('testSkippedTags', function () {
     deleteIfFileExists(skippedTranslationXml);
   });
 });
+
+describe('testUseLocalMsgsSourceHasNoTags', function () {
+  it('should never happen in web author mode', function () {
+    var folderForNoTagsTest = __dirname + '/web_no_tags';
+    Synci18n.makeDirectory(folderForNoTagsTest);
+
+    var msgsFilePath = folderForNoTagsTest + '/msgs_no_tags.js';
+    var jsSourceFile = folderForNoTagsTest + '/plugin_has_no_tags.js';
+    var jsSourceContent = '(function () { var someText = "har har"; someText += "said the pirate, yarr";})();';
+
+    fs.writeFileSync(jsSourceFile, jsSourceContent, 'utf8');
+
+    // Options for a normal, no source tags run.
+    var opts = {
+      sourceFile: sourceFile,
+      jsSourcesLocation: folderForNoTagsTest,
+      destinationFile: msgsFilePath
+    };
+    var synci18n = Synci18n(opts);
+    synci18n.generateTranslations();
+    var msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    msgsFileContents.should.equal('(function(){var msgs={};sync.Translation.addTranslations(msgs);})();');
+
+
+    // Use local msgs.
+    var useLocalMsgsOptions = Object.assign({
+      useLocalMsgs: true
+    }, opts);
+    synci18n = Synci18n(useLocalMsgsOptions);
+    synci18n.generateTranslations();
+    msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    msgsFileContents.should.equal('var msgs={};');
+
+    // Use local msgs when in webauthor mode.
+    // Should do nothing - the useLocalMsgs file should be ignored.
+    var useLocalMsgsOptionsWebAuthor = Object.assign({
+      webAuthorMode: true
+    }, useLocalMsgsOptions);
+    synci18n = Synci18n(useLocalMsgsOptionsWebAuthor);
+    synci18n.generateTranslations();
+    msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    (msgsFileContents.indexOf('goog.provide("msgs")') !== -1).should.equal(true);
+    (msgsFileContents.indexOf('var msgs={}') === -1).should.equal(true);
+
+    // Clean up the temp files.
+    fs.unlinkSync(msgsFilePath);
+    fs.unlinkSync(jsSourceFile);
+    fs.rmdirSync(folderForNoTagsTest);
+  });
+});
