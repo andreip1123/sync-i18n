@@ -629,3 +629,48 @@ describe('testUseLocalMsgsSourceHasNoTags', function () {
     fs.rmdirSync(folderForNoTagsTest);
   });
 });
+
+describe('testTagsWithQuotes', function () {
+  it('should show warning if quotes are properly escaped when used in server tags ', function () {
+    var quotesTranslationXml = __dirname + '/translation_quotes.xml';
+    deleteIfFileExists(quotesTranslationXml);
+
+    var quotesTranslationXmlValue = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<translation>\n' +
+      '    <languageList>\n' +
+      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+      '    </languageList>\n' +
+      '    <key value="quotes_without_params">\n' +
+      '        <val lang="en_US">aaa' + "'" + 'a</val>\n' +
+      '        <val lang="de_DE">bbb' + "'" + 'b</val>\n' +
+      '        <val lang="fr_FR">ccc' + "'" + 'c</val>\n' +
+      '        <val lang="ja_JP">ddd' + "'" + 'd</val>\n' +
+      '        <val lang="nl_NL">eee' + "'" + 'e</val>\n' +
+      '    </key>\n' +
+      '    <key value="quotes_with_params">\n' +
+      '        <val lang="en_US">aaa' + "'" + ' {a}</val>\n' +
+      '        <val lang="de_DE">bbb' + "'" + ' {b}</val>\n' +
+      '        <val lang="fr_FR">ccc' + "'" + ' {c}</val>\n' +
+      '        <val lang="ja_JP">ddd' + "'" + ' {d}</val>\n' +
+      '        <val lang="nl_NL">eee' + "'" + ' {e}</val>\n' +
+      '    </key>\n' +
+      '</translation>';
+    fs.writeFileSync(quotesTranslationXml, quotesTranslationXmlValue, 'utf8');
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, quotesTranslationXml]
+    });
+
+    synci18n.serverTags = ['quotes_without_params', 'quotes_with_params'];
+    synci18n.generateTranslations();
+    synci18n.checkQuotesServerSide(synci18n.extractedServerTags).should.equal(1);
+    deleteIfFileExists(quotesTranslationXml);
+
+    // to test the detection straight on the string, do it faster with:
+    synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote").should.equal(false);
+    synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote and a {variable}").should.equal(true);
+  });
+});

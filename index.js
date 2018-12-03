@@ -436,20 +436,20 @@ Synci18n.prototype.generateTranslations = function () {
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 
   if (this.serverTags.length > 0) {
-    var extractedServerTags = [];
+    this.extractedServerTags = [];
 
     this.serverTags.forEach(function (serverSideTag) {
       uniformTagName = this.getUniformTagName(serverSideTag);
       if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
-        extractedServerTags.push(allTagsFromTranslationFile[uniformTagName]);
+        this.extractedServerTags.push(allTagsFromTranslationFile[uniformTagName]);
       } else {
         console.log('One server tag is used but cannot be found in the translation file, ', serverSideTag);
       }
     }, this);
 
     var translationXmlElements = '';
-    for (var i = 0; i < extractedServerTags.length; i++) {
-      var extractedServerTag = extractedServerTags[i];
+    for (var i = 0; i < this.extractedServerTags.length; i++) {
+      var extractedServerTag = this.extractedServerTags[i];
       translationXmlElements += this.makeXmlEntry(extractedServerTag['$'].value, extractedServerTag, true);
     }
 
@@ -459,6 +459,7 @@ Synci18n.prototype.generateTranslations = function () {
     fs.writeFileSync(this.translationXmlDestination, Synci18n.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
 
     this.checkTranslationStatus();
+    this.checkQuotesServerSide(this.extractedServerTags);
   } else {
     console.log('Could not find server tags');
   }
@@ -499,6 +500,45 @@ Synci18n.prototype.removeNewlinesAndTabs = function (message) {
     //tagsWithNewlines++;
   }
   return message;
+};
+
+/**
+ * Check if message has unescaped quotes and variables.
+ * May be a problem on the server-side.
+ * @param {string} message The message to check.
+ * @return {boolean} Whether the message has unescaped quotes.
+ */
+Synci18n.prototype.checkMessageHasUnescapedQuotes = function (message) {
+  return message.indexOf("'") !== -1 && message.indexOf('}') !== -1;
+};
+
+/**
+ * MessageFormat will break when it finds unescaped single quotes.
+ * This is only a problem for server-side tags.
+ * @param serverTags
+ * @returns {number}
+ */
+Synci18n.prototype.checkQuotesServerSide = function (serverTags) {
+  var tagsWithQuoteWarning = 0;
+  for (var i = 0; i < serverTags.length; i++) {
+    var s = serverTags[i];
+    var serverTag = this.getMsgsObjectForTag(s, true);
+    var foundQuoteDanger = false;
+    for (var langCode in serverTag) {
+      if (this.checkMessageHasUnescapedQuotes(serverTag[langCode])) {
+        console.error('*** The quote must be escaped in: ', serverTag[langCode]);
+        console.error(Object.keys(serverTags));
+        foundQuoteDanger = true;
+      }
+    }
+    if (foundQuoteDanger) {
+      tagsWithQuoteWarning++;
+    }
+  }
+  if (tagsWithQuoteWarning > 0) {
+    console.error('There are ' + tagsWithQuoteWarning + ' server-side tags which probably need to have quotes escaped.');
+  }
+  return tagsWithQuoteWarning;
 };
 
 /**
