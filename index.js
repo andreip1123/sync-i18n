@@ -509,7 +509,16 @@ Synci18n.prototype.removeNewlinesAndTabs = function (message) {
  * @return {boolean} Whether the message has unescaped quotes.
  */
 Synci18n.prototype.checkMessageHasUnescapedQuotes = function (message) {
-  return message.indexOf("'") !== -1 && message.indexOf('}') !== -1;
+  var hasUnescapedQuotes = false;
+  if (message.indexOf('}') !== -1) {
+    // Check whether each quote in the message is followed by another quote.
+    var indexOfQuote = message.indexOf("'");
+    while (indexOfQuote !== -1 && !hasUnescapedQuotes) {
+      hasUnescapedQuotes = (indexOfQuote < message.length - 1 && message[indexOfQuote + 1] !== "'");
+      indexOfQuote = message.indexOf("'", indexOfQuote + 2);
+    }
+  }
+  return hasUnescapedQuotes;
 };
 
 /**

@@ -672,5 +672,10 @@ describe('testTagsWithQuotes', function () {
     // to test the detection straight on the string, do it faster with:
     synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote").should.equal(false);
     synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote and a {variable}").should.equal(true);
+
+    // Detect if the quotes have been properly escaped.
+    synci18n.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d'origine.").should.equal(true);
+    synci18n.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d''origine.").should.equal(false);
+    synci18n.checkMessageHasUnescapedQuotes("pas d'éléments.").should.equal(false);
   });
 });
