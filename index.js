@@ -14,7 +14,7 @@ function Synci18n(options) {
   options = options || {};
 
   this.regex = {
-    client: /(?:tr|trDom)\(msgs\.[A-Za-z0-9|\_|\.]+/g,
+    client: /(?:tr|trDom)([\t\r\n ]*)\(([\t\r\n ]*)msgs\.[A-Za-z0-9|\_|\.]+/g,
     server: /rb.getMessage\(TranslationTags.[A-Za-z0-9|\_]+/g
   };
   this.regexTrim = {
@@ -415,6 +415,10 @@ Synci18n.prototype.generateTranslations = function () {
 
   var uniformTagName;
   var msgsObj = this.getMsgsObject();
+
+  // Log the tags which were not found in the xml files.
+  this.checkTranslationStatus();
+
   var msgsFile;
 
     // The file has a different structure when used by the web author.
@@ -650,6 +654,7 @@ Synci18n.prototype.findTagsInString = function (fileContents, tagsType) {
         return tag.replace(regexTrim, '');
       } else {
         tag = tag.substring(tag.indexOf('(') + 1);
+        tag = tag.trim();
         return tag.replace('msgs.', '');
       }
     });

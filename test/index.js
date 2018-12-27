@@ -679,3 +679,32 @@ describe('testTagsWithQuotes', function () {
     synci18n.checkMessageHasUnescapedQuotes("pas d'éléments.").should.equal(false);
   });
 });
+
+/**
+ * Check that client-side tags are detected even if there are some newlines/tabs/spaces between the tr and the msgs part.
+ */
+describe('findTagsInStringNewlinesTabsSpaces', function () {
+  it('should messages even if there are some newlines, tabs, spaces', function () {
+    // Check that it will take any tag format.
+    var mockPluginJsContent = '(function () {\n' +
+      '  var someText = tr(\n\n' + // two newlines
+          'msgs.JULY_FLOWERS_);\n' +
+      '  var someText = tr( msgs.TEST1_);' +
+      '  var someText = trDom(  \n msgs.TEST2_);' +
+      '  var someText = tr( \n   \n msgs.TEST3_);' +
+      '  var someText += trDom(msgs.RESTART_SERVER_, tr(msgs.Apr));\n' +
+      '  var someOtherText += trDom(msgs.MAY_) + trDom(msgs.MAY) + trDom(msgs.May) + trDom(msgs.May_);\n' +
+      '  someOtherText += tr(msgs.APR_) + tr(msgs.Apr_) + tr(msgs.APR);\n' +
+      '})();';
+
+
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, './test/translation_additional.xml']
+    });
+
+    // All formats should be detected and all formats should be present in the msgs file.
+    var expectedTags = ['JULY_FLOWERS_', 'TEST1_', 'TEST2_', 'TEST3_', 'RESTART_SERVER_', 'APR_', 'APR', 'Apr_', 'Apr', 'MAY_', 'MAY', 'May_', 'May' ];
+    var tagsFound = synci18n.findTagsInString(mockPluginJsContent, 'client');
+    tagsFound.should.have.members(expectedTags);
+  });
+});
