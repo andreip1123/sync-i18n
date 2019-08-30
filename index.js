@@ -798,19 +798,13 @@ Synci18n.prototype.addExceptions = function (tagList, tagExceptions) {
   return this.removeDuplicates(tagList.concat(tagExceptions));
 };
 
-module.exports = Synci18n;
-
 /**
  * Anything other than boolean true or string 'true' will return false.
  * @param option The option to check.
  * @returns {boolean} The option value to set.
  */
 Synci18n.prototype.getBooleanOption = function (option) {
-  var optValue = false;
-  if (typeof option === 'boolean') {
-    optValue = option;
-  } else {
-    optValue = (option === 'true');
-  }
-  return optValue;
+  return option === true || option === 'true';
 };
+
+module.exports = Synci18n;
