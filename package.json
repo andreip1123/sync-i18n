@@ -1,6 +1,6 @@
 {
   "name": "sync-i18n",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -21,6 +21,6 @@
     "mocha": "^4.0.1"
   },
   "dependencies": {
-    "xml2js": "^0.4.19"
+    "xml2js": "0.4.19"
   }
 }
