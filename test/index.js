@@ -1,3 +1,4 @@
+"use strict";
 var should = require('chai').should();
 var Synci18n = require('../index');
 var fs = require('fs');
@@ -575,6 +576,74 @@ describe('testSkippedTags', function () {
     synci18n.checkTranslationStatus();
     synci18n.tagSkipInconsistencies.length.should.eql(1);
     synci18n.tagSkipInconsistencies.should.eql(['April flowers']);
+
+    deleteIfFileExists(skippedTranslationXml);
+  });
+});
+
+describe('testSkippedLanguage', function () {
+  it('should show warning if a skipped language get translated', function () {
+    var skippedTranslationXml = __dirname + '/translation_skipped_language.xml';
+    deleteIfFileExists(skippedTranslationXml);
+
+    var testSkippedTagsTranslationXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<translation>\n' +
+      '    <languageList>\n' +
+      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+      '    </languageList>\n' +
+      '    <key value="April_flowers">\n' +
+      '        <val lang="en_US">April flowers</val>\n' +
+      '        <val lang="de_DE">Avril flowers</val>\n' +
+      '        <val lang="fr_FR">April flowers</val>\n' +
+      '        <val skipTranslation="true" lang="ja_JP">Aprili flowersi</val>\n' +
+      '        <val lang="nl_NL">April flowers</val>\n' +
+      '    </key>\n' +
+      '</translation>';
+    fs.writeFileSync(skippedTranslationXml, testSkippedTagsTranslationXml, 'utf8');
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, skippedTranslationXml]
+    });
+    synci18n.checkTranslationStatus();
+    synci18n.languageSkipInconsistencies.length.should.eql(1);
+    synci18n.languageSkipInconsistencies.should.eql(['April flowers (ja_JP)']);
+
+    deleteIfFileExists(skippedTranslationXml);
+  });
+});
+
+describe('testMultipleSkippedLanguages', function () {
+  it('should show warning more skipped languages get translated', function () {
+    var skippedTranslationXml = __dirname + '/translation_skipped_language.xml';
+    deleteIfFileExists(skippedTranslationXml);
+
+    var testSkippedTagsTranslationXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<translation>\n' +
+      '    <languageList>\n' +
+      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+      '    </languageList>\n' +
+      '    <key value="April_flowers">\n' +
+      '        <val lang="en_US">April flowers</val>\n' +
+      '        <val lang="de_DE">Avril flowers</val>\n' +
+      '        <val lang="fr_FR">April flowers</val>\n' +
+      '        <val skipTranslation="true" lang="ja_JP">Aprili flowersi</val>\n' +
+      '        <val lang="nl_NL">April flowers</val>\n' +
+      '    </key>\n' +
+      '</translation>';
+    fs.writeFileSync(skippedTranslationXml, testSkippedTagsTranslationXml, 'utf8');
+    var synci18n = Synci18n({
+      sourceFiles: [sourceFile, skippedTranslationXml]
+    });
+    synci18n.checkTranslationStatus();
+    synci18n.languageSkipInconsistencies.length.should.eql(1);
+    synci18n.languageSkipInconsistencies.should.eql(['April flowers (ja_JP)']);
 
     deleteIfFileExists(skippedTranslationXml);
   });

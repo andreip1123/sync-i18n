@@ -31,6 +31,7 @@ function Synci18n(options) {
   this.unusedTags = [];
   this.tagsNotInXml = [];
   this.tagSkipInconsistencies = [];
+  this.languageSkipInconsistencies = [];
 
   this.rootDir = options.rootDir || '.';
   this.sourceFiles = this.getSourceFiles(options);
@@ -746,32 +747,82 @@ Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagNam
   }
 };
 
-Synci18n.prototype.checkTagsSkipped = function () {
+/**
+ * Check that, if the tag or part of it is marked with skipTranslation, it is properly skipped.
+ */
+Synci18n.prototype.checkSkippedTranslations = function () {
   this.tags.forEach(function (tagObj) {
-    if (tagObj['$'].hasOwnProperty('skipTranslation') && tagObj['$']['skipTranslation'] === 'true') {
-      var msgsObjForTag = this.getMsgsObjectForTag(tagObj);
-      var englishMsg = msgsObjForTag['en_US'];
-      var foundTagSkipFail = false;
-      for (var langCode in msgsObjForTag) {
-        if (englishMsg !== msgsObjForTag[langCode]) {
-          foundTagSkipFail = true;
-        }
-      }
-      if (foundTagSkipFail) {
-        this.tagSkipInconsistencies.push(englishMsg);
+    var tagNotProperlySkipped = this.checkSkippedTag(tagObj);
+    if (tagNotProperlySkipped) {
+      // The tag has the skipTranslation attribute - all languages should be skipped.
+      this.tagSkipInconsistencies.push(tagNotProperlySkipped);
+    } else {
+      // This tag may have languages with skipTranslation attribute - those languages should be skipped.
+      var languagesNotProperlySkipped = this.checkSkippedLanguages(tagObj);
+      if (languagesNotProperlySkipped && languagesNotProperlySkipped.length) {
+        this.languageSkipInconsistencies = this.languageSkipInconsistencies.concat(languagesNotProperlySkipped);
       }
     }
   }, this);
   if (this.tagSkipInconsistencies.length > 0) {
     console.error('Tags marked with skipTranslation should not be translated', this.tagSkipInconsistencies);
   }
+  if (this.languageSkipInconsistencies.length > 0) {
+    console.error('Languages marked with skipTranslation should not be translated', this.languageSkipInconsistencies);
+  }
+};
+
+/**
+ * Check that, if the tag has skipTranslation attribute, all languages are properly skipped.
+ * @param {object} tagObj The xml tag object.
+ * @return {string|null} The english message of the tag which is not properly skipped.
+ */
+Synci18n.prototype.checkSkippedTag = function (tagObj) {
+  var tagSkipError = null;
+  if (tagObj['$'].hasOwnProperty('skipTranslation') && tagObj['$']['skipTranslation'] === 'true') {
+    var msgsObjForTag = this.getMsgsObjectForTag(tagObj, false);
+    var englishMsg = msgsObjForTag['en_US'];
+    for (var langCode in msgsObjForTag) {
+      if (englishMsg !== msgsObjForTag[langCode]) {
+        tagSkipError = englishMsg;
+        break;
+      }
+    }
+  }
+  return tagSkipError;
+};
+
+/**
+ * Some languages may have the skipTranslation attribute, show an error if it is not respected.
+ * @param {object} tagObj The xml tag object.
+ * @return {Array<string>} The list of messages which are not properly skipped in a certain language.
+ */
+Synci18n.prototype.checkSkippedLanguages = function (tagObj) {
+  var removeNewLinesAndTabsFn = this.removeNewlinesAndTabs;
+  var languageSkipErrors = [];
+
+  var englishMessage;
+  // Get all messages for all languages.
+  tagObj.val.forEach(function (translation) {
+    var messageForLanguage = translation['_'];
+    if (!this.keepNewlinesAndTabs) {
+      messageForLanguage = removeNewLinesAndTabsFn(messageForLanguage);
+    }
+
+    if (translation['$'].lang === 'en_US') {
+      englishMessage = messageForLanguage;
+    } else if (translation['$'].skipTranslation === 'true' && messageForLanguage !== englishMessage) {
+      languageSkipErrors.push(englishMessage + ' (' + translation['$'].lang + ')');
+    }
+  });
+  return languageSkipErrors;
 };
 
 /**
  * Check the status of the translation file.
  */
 Synci18n.prototype.checkTranslationStatus = function () {
-  this.checkTagsSkipped();
+  this.checkSkippedTranslations();
 
   if (this.tagsNotInXml.length > 0) {
     console.error('Could not find in translation file:', this.tagsNotInXml);
