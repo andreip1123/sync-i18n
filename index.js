@@ -3,6 +3,8 @@ const path = require('path');
 
 const xml2js = require('xml2js');
 
+var utils = require('./utils.js');
+
 function Synci18n(options) {
 
   // User does not have to write 'new'
@@ -66,7 +68,7 @@ Synci18n.prototype.getSourceFiles = function (options) {
   if (Array.isArray(options.sourceFiles)) {
     sourceFiles.forEach(function(fileToCheck){
       if (!fs.existsSync(fileToCheck)) {
-        console.warn('Source file does not exist: ' + fileToCheck);
+        console.warn('Warning: Source file does not exist: ' + fileToCheck);
       }
     });
     sourceFiles = options.sourceFiles;
@@ -75,7 +77,7 @@ Synci18n.prototype.getSourceFiles = function (options) {
       if (fs.existsSync(options.sourceFiles)) {
         sourceFiles = [options.sourceFiles];
       } else {
-        console.warn('Source file does not exist: ' + options.sourceFiles);
+        console.warn('Warning: Source file does not exist: ' + options.sourceFiles);
         console.warn('Falling back to ' + defaultSourceFile);
         sourceFiles = [defaultSourceFile];
       }
@@ -84,13 +86,13 @@ Synci18n.prototype.getSourceFiles = function (options) {
       if (fs.existsSync(options.sourceFile)) {
         sourceFiles = [options.sourceFile];
       } else {
-        console.warn('Source file does not exist: ' + options.sourceFile);
+        console.warn('Warning: Source file does not exist: ' + options.sourceFile);
         console.warn('Falling back to ' + defaultSourceFile);
         sourceFiles = [defaultSourceFile];
       }
     } else {
       if (!fs.existsSync(defaultSourceFile)) {
-        console.log('Source file does not exist: ' + defaultSourceFile)
+        console.log('Warning: Source file does not exist: ' + defaultSourceFile)
       }
       sourceFiles = [defaultSourceFile];
     }
@@ -107,7 +109,7 @@ Synci18n.prototype.addToSupportedLanguages = function (languagesList) {
     var langObj = languagesList[i]['$'];
     if (this.supportedLanguagesMap.hasOwnProperty(langObj.lang)) {
       if (this.supportedLanguagesMap[langObj.lang] !== langObj.localeDescription) {
-        console.warn('supported languages mismatch! ', langObj.lang, this.supportedLanguagesMap[langObj.lang], ' got ', langObj.localeDescription);
+        console.warn('WARNING: supported languages mismatch! ', langObj.lang, this.supportedLanguagesMap[langObj.lang], ' got ', langObj.localeDescription);
       }
     } else {
       this.supportedLanguagesMap[langObj.lang] = langObj.localeDescription;
@@ -132,34 +134,15 @@ Synci18n.prototype.readSourceFiles = function (sourceFiles) {
           this.languages = this.languages.concat(this.getLanguages(result.translation.languageList[0].language));
           this.addToSupportedLanguages(result.translation.languageList[0].language);
         } else {
-          console.error('Could not parse ' + sourceFile + ', check if file is valid XML');
+          console.error('ERROR: Could not parse ' + sourceFile + ', check if file is valid XML');
         }
       }).bind(this));
     } else {
-      console.trace('Source file ' + sourceFile + ' does not exist');
+      console.trace('ERROR: Source file ' + sourceFile + ' does not exist');
     }
   }
-  this.languages = this.removeDuplicates(this.languages);
-};
-
-/**
- * Remove duplicates from array.
- * @param array The array to remove duplicates from.
- * @returns {Array} The de-duplicated array.
- */
-Synci18n.prototype.removeDuplicates = function (array) {
-  var visited = {};
-  var output = [];
-  var len = array.length;
-  var j = 0;
-  for(var i = 0; i < len; i++) {
-    var item = array[i];
-    if(visited[item] !== 1) {
-      visited[item] = 1;
-      output[j++] = item;
-    }
-  }
-  return output;
+  // Remove duplicates.
+  this.languages = Array.from(new Set(this.languages));
 };
 
 /**
@@ -229,19 +212,6 @@ Synci18n.prototype.getLanguages = function (languages) {
 };
 
 /**
- * Strip the tag name of its personality, turn it into lowercase and remove trailing underline.
- * @param {string} tagName The tag name to be processed.
- * @return {string} The uniform tag name.
- */
-Synci18n.prototype.getUniformTagName = function (tagName) {
-  var uniformTagName = tagName.toLowerCase();
-  if (uniformTagName[uniformTagName.length - 1] === '_') {
-    uniformTagName = uniformTagName.slice(0, -1);
-  }
-  return uniformTagName;
-};
-
-/**
  * Get a map of all tags, where the uniform tag name is the key and
  * the value is the translation object as read from the translation.xml file.
  *
@@ -250,7 +220,7 @@ Synci18n.prototype.getUniformTagName = function (tagName) {
 Synci18n.prototype.getTagMap = function () {
   var allTags = {};
   this.tags.forEach(function (tagObj) {
-    allTags[this.getUniformTagName(tagObj['$'].value)] = tagObj;
+    allTags[utils.getUniformTagName(tagObj['$'].value)] = tagObj;
   }, this);
   this.uniformTags = Object.keys(allTags);
   // Overwrite the generics with the specifics.
@@ -271,7 +241,7 @@ Synci18n.prototype.getMsgsObject = function () {
   var allTagsFromTranslationFile = this.getTagMap();
 
   this.clientTags.forEach(function (clientSideTag) {
-    uniformTagName = this.getUniformTagName(clientSideTag);
+    uniformTagName = utils.getUniformTagName(clientSideTag);
     if (allTagsFromTranslationFile.hasOwnProperty(clientSideTag)) {
       tagObj = allTagsFromTranslationFile[clientSideTag];
       msgsObj[clientSideTag] = this.getMsgsObjectForTag(tagObj);
@@ -329,34 +299,6 @@ Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
 };
 
 /**
- * Return the string, removing quotes where safe.
- * @param obj The object to custom stringify.
- */
-Synci18n.prototype.stringify = function (obj) {
-  var stringified = '{';
-  for (var prop in obj) {
-    if (obj.hasOwnProperty(prop)) {
-      if (prop.match(/[0-9]|-|\./)) {
-        stringified += JSON.stringify(prop) + ':';
-      } else {
-        stringified += prop + ':';
-      }
-      if (typeof obj[prop] === 'string') {
-        stringified += JSON.stringify(obj[prop]);
-      } else if (typeof obj[prop] === "object") {
-        stringified += this.stringify(obj[prop]);
-      }
-      stringified += ','
-    }
-  }
-  if (stringified.length > 1) {
-    stringified = stringified.slice(0, -1);
-  }
-  stringified += '}';
-  return stringified;
-};
-
-/**
  * Check if there are any tags in the translation.xml file, which are not used in the application.
  * These tags will be purged from the output.
  */
@@ -365,8 +307,8 @@ Synci18n.prototype.checkForUnusedTags = function () {
   var uniformTags = this.uniformTags;
   var unusedTags = [];
 
-  var uniformizedClientTags = this.clientTags ? this.clientTags.map(this.getUniformTagName) : [];
-  var uniformizedServerTags = this.serverTags ? this.serverTags.map(this.getUniformTagName) : [];
+  var uniformizedClientTags = this.clientTags ? this.clientTags.map(utils.getUniformTagName) : [];
+  var uniformizedServerTags = this.serverTags ? this.serverTags.map(utils.getUniformTagName) : [];
 
   uniformTags.forEach(function (tag) {
     if (uniformizedClientTags.indexOf(tag) === -1 && uniformizedServerTags.indexOf(tag) === -1) {
@@ -424,15 +366,15 @@ Synci18n.prototype.generateTranslations = function () {
 
     // The file has a different structure when used by the web author.
   if (this.webAuthorMode) {
-    msgsFile = 'goog.provide("msgs"); //This file is generated by a gulp task.\nwindow.msgs=' + this.stringify(msgsObj) +
+    msgsFile = 'goog.provide("msgs"); //This file is generated by a gulp task.\nwindow.msgs=' + utils.stringify(msgsObj) +
       ';window.supportedLanguages=' + JSON.stringify(this.supportedLanguages) + ';';
   } else {
-    msgsFile = '(function(){var msgs=' + this.stringify(msgsObj) + ';sync.Translation.addTranslations(msgs);})();';
+    msgsFile = '(function(){var msgs=' + utils.stringify(msgsObj) + ';sync.Translation.addTranslations(msgs);})();';
     // Must be surrounded by an IIFE with the rest of the plugin.
     // Will otherwise overwrite the global msgs.
     if (this.useLocalMsgs) {
-      console.warn('Using local messages, make sure it is surrounded by IIFE properly!');
-      msgsFile = 'var msgs=' + this.stringify(msgsObj) + ';';
+      console.warn('Warning: Using local messages, make sure it is surrounded by IIFE properly!');
+      msgsFile = 'var msgs=' + utils.stringify(msgsObj) + ';';
     }
   }
 
@@ -444,11 +386,11 @@ Synci18n.prototype.generateTranslations = function () {
     this.extractedServerTags = [];
 
     this.serverTags.forEach(function (serverSideTag) {
-      uniformTagName = this.getUniformTagName(serverSideTag);
+      uniformTagName = utils.getUniformTagName(serverSideTag);
       if (allTagsFromTranslationFile.hasOwnProperty(uniformTagName)) {
         this.extractedServerTags.push(allTagsFromTranslationFile[uniformTagName]);
       } else {
-        console.log('One server tag is used but cannot be found in the translation file, ', serverSideTag);
+        console.warn('WARNING: One server tag is used but cannot be found in the translation file, ', serverSideTag);
       }
     }, this);
 
@@ -461,37 +403,13 @@ Synci18n.prototype.generateTranslations = function () {
     var targetPath = path.resolve(path.dirname(this.translationXmlDestination));
     console.log('Creating folder', targetPath);
     Synci18n.makeDirectory(targetPath);
-    fs.writeFileSync(this.translationXmlDestination, Synci18n.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
+    fs.writeFileSync(this.translationXmlDestination, utils.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
 
     this.checkTranslationStatus();
     this.checkQuotesServerSide(this.extractedServerTags);
   } else {
-    console.log('Could not find server tags');
+    console.log('Warning: No server tags found... skipping');
   }
-};
-
-/**
- * Wrap the list of tag elements to create a translation.xml file.
- * @param translationXmlElements {string} List of translation translationXmlElements xml elements.
- * @param showWarning {boolean|null} Whether to add a comment warning that the file is generated.
- * @returns {string} The translation.xml file contents.
- */
-Synci18n.makeXmlWithTags = function (translationXmlElements, showWarning) {
-  var generatedFileWarning = '';
-  if (showWarning) {
-    generatedFileWarning = '<!-- IMPORTANT: This file is generated and contains only the subset of messages used on the server-side. -->\n' +
-      '<!-- You should not manually edit this file. -->\n';
-  }
-  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    generatedFileWarning +
-    '<translation>\n' +
-    '    <languageList>\n' +
-    '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
-    '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
-    '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
-    '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
-    '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
-    '    </languageList>\n' + translationXmlElements + '</translation>'
 };
 
 /**
@@ -540,7 +458,7 @@ Synci18n.prototype.checkQuotesServerSide = function (serverTags) {
     var foundQuoteDanger = false;
     for (var langCode in serverTag) {
       if (this.checkMessageHasUnescapedQuotes(serverTag[langCode])) {
-        console.error('*** The quote must be escaped in: ', serverTag[langCode]);
+        console.error('ERROR: The quote must be escaped in: ', serverTag[langCode]);
         console.error(Object.keys(serverTags));
         foundQuoteDanger = true;
       }
@@ -550,7 +468,7 @@ Synci18n.prototype.checkQuotesServerSide = function (serverTags) {
     }
   }
   if (tagsWithQuoteWarning > 0) {
-    console.error('There are ' + tagsWithQuoteWarning + ' server-side tags which probably need to have quotes escaped.');
+    console.error('ERROR: There are ' + tagsWithQuoteWarning + ' server-side tags which probably need to have quotes escaped.');
   }
   return tagsWithQuoteWarning;
 };
@@ -628,7 +546,7 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
         }
       }
     } else {
-      console.error('[' + tagsType + ']' + ' Could not find ', directory);
+      console.warn('WARNING: [' + tagsType + '-side-tags]' + ' Could not find folder: ', directory);
     }
 
   };
@@ -669,24 +587,12 @@ Synci18n.prototype.findTagsInString = function (fileContents, tagsType) {
 };
 
 /**
- * Get the variables from a translation string.
- * Detects the following formats: ${EXAMPLE_VARIABLE} or {0} or {VARIABLE_NAME}
- *
- * @param message The translated message to check for variables
- *
- * @returns {?string[]} Array with variables or null.
- */
-Synci18n.prototype.checkForVariables = function (message) {
-  return message.match(/(\{\$([A-Z|a-z|\_]*)\}|\{[A-Z|a-z|\_|0-9]*\})+?/g);
-};
-
-/**
  * Show variable inconsistencies in the console.
  * @param tagFinalForm The tag to be checked.
  * @param tagName The name of the tag to check.
  */
 Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagName) {
-  var englishVariables = this.checkForVariables(tagFinalForm['en_US']);
+  var englishVariables = utils.checkForVariables(tagFinalForm['en_US']);
   var variables = [];
 
   var numberOfVariableInconsistencies = {};
@@ -695,7 +601,7 @@ Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagNam
     var lang = this.languages[i];
     if (lang !== 'en_US') {
       if (tagFinalForm[lang]) {
-        variables = this.checkForVariables(tagFinalForm[lang]);
+        variables = utils.checkForVariables(tagFinalForm[lang]);
         if (variables) {
           if (variables.length !== englishVariables.length) {
             if (!numberOfVariableInconsistencies[tagName]) {
@@ -726,7 +632,7 @@ Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagNam
   }
 
   if (Object.keys(numberOfVariableInconsistencies).length > 0) {
-    console.log('Variable number inconsistencies: ');
+    console.log('ERROR: Variable number inconsistencies: ');
     for (var t in numberOfVariableInconsistencies) {
       console.log(t);
       numberOfVariableInconsistencies[t].forEach(function (languageAndNumber) {
@@ -737,7 +643,7 @@ Synci18n.prototype.alertIfVariableInconsistency = function (tagFinalForm, tagNam
   }
 
   if (Object.keys(nameOfVariableInconsistencies).length > 0) {
-    console.log('Variable name inconsistencies: ');
+    console.log('ERROR: Variable name inconsistencies: ');
     for (var n in nameOfVariableInconsistencies) {
       nameOfVariableInconsistencies[n].forEach(function (languageAndName) {
         console.log('  ' + languageAndName);
@@ -765,10 +671,10 @@ Synci18n.prototype.checkSkippedTranslations = function () {
     }
   }, this);
   if (this.tagSkipInconsistencies.length > 0) {
-    console.error('Tags marked with skipTranslation should not be translated', this.tagSkipInconsistencies);
+    console.error('ERROR: Tags marked with skipTranslation should not be translated', this.tagSkipInconsistencies);
   }
   if (this.languageSkipInconsistencies.length > 0) {
-    console.error('Languages marked with skipTranslation should not be translated', this.languageSkipInconsistencies);
+    console.error('ERROR: Languages marked with skipTranslation should not be translated', this.languageSkipInconsistencies);
   }
 };
 
@@ -825,7 +731,7 @@ Synci18n.prototype.checkTranslationStatus = function () {
   this.checkSkippedTranslations();
 
   if (this.tagsNotInXml.length > 0) {
-    console.error('Could not find in translation file:', this.tagsNotInXml);
+    console.error('ERROR: Could not find tags in translation file:', this.tagsNotInXml);
   }
 };
 
@@ -840,13 +746,14 @@ Synci18n.prototype.checkTranslationStatus = function () {
 Synci18n.prototype.addExceptions = function (tagList, tagExceptions) {
   // Add tag exception if a translation for it could be found in the source xmls.
   tagExceptions = tagExceptions.filter(function (tag) {
-    return this.uniformTags.indexOf(this.getUniformTagName(tag)) !== -1;
+    return this.uniformTags.indexOf(utils.getUniformTagName(tag)) !== -1;
   }.bind(this));
   if (tagExceptions.length > 0) {
-    console.log('The following client-side tags will be added even if not used: ');
+    console.log('The following client-side tags will be added even though they seem to not be used: ');
     console.log(tagExceptions);
   }
-  return this.removeDuplicates(tagList.concat(tagExceptions));
+  // Remove duplicates.
+  return Array.from(new Set(tagList.concat(tagExceptions)));
 };
 
 /**

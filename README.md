@@ -20,7 +20,7 @@ syncI18n.generateTranslations();
 
 Available options:
 
-- **sourceFiles**: array of paths to translation.xml source files files. Defaults to `plugin_root/i18n/translation.xml`.
+- **sourceFiles**: array of paths to translation.xml source files. Defaults to `plugin_root/i18n/translation.xml`.
 
 - **jsSourcesLocation**: path to folder containing .js/.html files to detect client-side tags. Defaults to `plugin_root/web`.
 

@@ -1,7 +1,9 @@
 "use strict";
 var should = require('chai').should();
-var Synci18n = require('../index');
 var fs = require('fs');
+
+var Synci18n = require('../index');
+var utils = require('../utils.js');
 
 var sourceFile = './test/translation.xml';
 
@@ -70,11 +72,11 @@ describe('getUniformName', function () {
       sourceFile: sourceFile
     });
 
-    synci18n.getUniformTagName('CLIENT_SIDE_').should.equal('client_side');
-    synci18n.getUniformTagName('Server_side').should.equal('server_side');
+    utils.getUniformTagName('CLIENT_SIDE_').should.equal('client_side');
+    utils.getUniformTagName('Server_side').should.equal('server_side');
     // Try some weird formats too
-    synci18n.getUniformTagName('wEird_FormaT_oNE_').should.equal('weird_format_one');
-    synci18n.getUniformTagName('wEird_FormaT_oNE').should.equal('weird_format_one');
+    utils.getUniformTagName('wEird_FormaT_oNE_').should.equal('weird_format_one');
+    utils.getUniformTagName('wEird_FormaT_oNE').should.equal('weird_format_one');
   });
 });
 
@@ -228,7 +230,7 @@ describe('findTagsInString', function () {
     var tempTranslationFile = mockPluginDirectory + '/translation_tag_formats.xml';
     var someTagsXmlElements = makeXmlEntryWithEnglishMessage('MAY', firstMessage) +
       makeXmlEntryWithEnglishMessage('May', secondMessage);
-    fs.writeFileSync(tempTranslationFile, Synci18n.makeXmlWithTags(someTagsXmlElements), 'utf8');
+    fs.writeFileSync(tempTranslationFile, utils.makeXmlWithTags(someTagsXmlElements), 'utf8');
 
     synci18n = Synci18n({
       sourceFiles: [sourceFile, './test/translation_additional.xml', tempTranslationFile],
@@ -425,23 +427,20 @@ describe('outputTranslationXml', function () {
 
 describe('customStringifyFunction', function () {
   it('should make valid objects, trimming quotes where possible', function () {
-    var synci18n = Synci18n({
-      sourceFile: sourceFile
-    });
     var input = {en_US: 'July flowers', de_DE: 'July flowers'};
-    synci18n.stringify(input).should.equal('{en_US:"July flowers",de_DE:"July flowers"}');
+    utils.stringify(input).should.equal('{en_US:"July flowers",de_DE:"July flowers"}');
     input = {
       some_tag_name: {en_US: 'July flowers', de_DE: 'July flowers'},
       some_other_name: {ja_JP: 'flowers', fr_FR: 'flowers'}
     };
-    synci18n.stringify(input).should.equal('{some_tag_name:{en_US:"July flowers",de_DE:"July flowers"},some_other_name:{ja_JP:"flowers",fr_FR:"flowers"}}');
+    utils.stringify(input).should.equal('{some_tag_name:{en_US:"July flowers",de_DE:"July flowers"},some_other_name:{ja_JP:"flowers",fr_FR:"flowers"}}');
     input = {
       "invalid-tag-name": "www",
       "invalid.tag.name": "another one",
       "1.invalid": "this one has a number",
       valid_tag: "why not"
     };
-    synci18n.stringify(input).should.equal('{"invalid-tag-name":"www","invalid.tag.name":"another one","1.invalid":"this one has a number",valid_tag:"why not"}');
+    utils.stringify(input).should.equal('{"invalid-tag-name":"www","invalid.tag.name":"another one","1.invalid":"this one has a number",valid_tag:"why not"}');
   });
 });
 
@@ -483,10 +482,9 @@ describe('webauthorMsgsFormat', function () {
 
 describe('testVariableRegex', function () {
   it('should properly detect variables in messages', function () {
-    var synci18n = Synci18n({sourceFile: sourceFile});
     // This case would consider {$B_END}{$P_END} as one variable.
     var stringToCheck = '{$B_START}Annuler/Rétablir{$B_END}{$P_END}';
-    var variables = synci18n.checkForVariables(stringToCheck);
+    var variables = utils.checkForVariables(stringToCheck);
     variables.length.should.equal(3);
   });
 });
@@ -503,7 +501,7 @@ describe('alertIfVariableInconsistency', function () {
       nl_NL: '${month} december ${day}'
     };
 
-    synci18n.checkForVariables(mockObject.en_US).length.should.equal(1);
+    utils.checkForVariables(mockObject.en_US).length.should.equal(1);
     synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
     Object.keys(synci18n.stats.numberOfVariableInconsistencies).length.should.equal(1);
 
@@ -522,7 +520,7 @@ describe('alertIfVariableInconsistency', function () {
       ja_JP: '${month} december'
     };
 
-    synci18n.checkForVariables(mockObject.en_US).length.should.equal(1);
+    utils.checkForVariables(mockObject.en_US).length.should.equal(1);
     synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
     var nameInconsistencies = synci18n.stats.nameOfVariableInconsistencies['TAG_NAME_'];
     Object.keys(synci18n.stats.nameOfVariableInconsistencies).length.should.equal(1);
@@ -540,7 +538,7 @@ describe('alertIfVariableInconsistency', function () {
       ja_JP: '${month} december ${day}'
     };
 
-    synci18n.checkForVariables(mockObject.en_US).length.should.equal(2);
+    utils.checkForVariables(mockObject.en_US).length.should.equal(2);
     synci18n.alertIfVariableInconsistency(mockObject, 'TAG_NAME_');
     Object.keys(synci18n.stats.nameOfVariableInconsistencies).length.should.equal(1);
     synci18n.stats.nameOfVariableInconsistencies['TAG_NAME_'].length.should.equal(4);
