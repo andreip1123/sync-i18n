@@ -273,16 +273,14 @@ Synci18n.prototype.getMsgsObject = function () {
  */
 Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
   var value = {};
-  var removeNewLinesAndTabsFn = this.removeNewlinesAndTabs;
 
   // Get all messages for all languages.
   tagObj.val.forEach(function (translation) {
-    var messageForLanguage = translation['_'];
-    if (!this.keepNewlinesAndTabs) {
-      messageForLanguage = removeNewLinesAndTabsFn(messageForLanguage);
+    let messageForLanguage = this.getMessageForLanguage(translation);
+    if (messageForLanguage) {
+      value[translation['$'].lang] = messageForLanguage;
     }
-    value[translation['$'].lang] = messageForLanguage;
-  });
+  }.bind(this));
 
   // Drop duplicate messages to save bandwidth.
   var fallbackLanguage = 'en_US';
@@ -704,24 +702,32 @@ Synci18n.prototype.checkSkippedTag = function (tagObj) {
  * @return {Array<string>} The list of messages which are not properly skipped in a certain language.
  */
 Synci18n.prototype.checkSkippedLanguages = function (tagObj) {
-  var removeNewLinesAndTabsFn = this.removeNewlinesAndTabs;
-  var languageSkipErrors = [];
+  let languageSkipErrors = [];
 
-  var englishMessage;
+  let englishMessage;
   // Get all messages for all languages.
   tagObj.val.forEach(function (translation) {
-    var messageForLanguage = translation['_'];
-    if (!this.keepNewlinesAndTabs) {
-      messageForLanguage = removeNewLinesAndTabsFn(messageForLanguage);
-    }
-
+    let messageForLanguage = this.getMessageForLanguage(translation);
     if (translation['$'].lang === 'en_US') {
       englishMessage = messageForLanguage;
     } else if (translation['$'].skipTranslation === 'true' && messageForLanguage !== englishMessage) {
       languageSkipErrors.push(englishMessage + ' (' + translation['$'].lang + ')');
     }
-  });
+  }.bind(this));
   return languageSkipErrors;
+};
+
+/**
+ * This slice of the translation tag object looks like:  { _: 'Restart Server', '$': { lang: 'en_US' } }
+ * @param {obj} translationObj The object containing a message for a language.
+ * @return {string} The message for the language, or the string 'undefined' if there was no message.
+ */
+Synci18n.prototype.getMessageForLanguage = function (translationObj) {
+  let messageForLanguage = translationObj['_'];
+  if (messageForLanguage && !this.keepNewlinesAndTabs) {
+    messageForLanguage = this.removeNewlinesAndTabs(messageForLanguage);
+  }
+  return messageForLanguage;
 };
 
 /**

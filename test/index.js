@@ -775,3 +775,49 @@ describe('findTagsInStringNewlinesTabsSpaces', function () {
     tagsFound.should.have.members(expectedTags);
   });
 });
+
+/**
+ * Check that if the message element for a language is empty translation still works as expected.
+ */
+describe('testNoMessageForALanguage', function () {
+  it("should work if there's an empty message element", function () {
+    let destinationFile = __dirname + '/temp/empty_message_translations.js';
+    let skippedTranslationXml = __dirname + '/translation_empty_message_for_language.xml';
+    deleteIfFileExists(skippedTranslationXml);
+
+    let testSkippedTagsTranslationXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<translation>\n' +
+      '    <languageList>\n' +
+      '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
+      '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
+      '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
+      '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
+      '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
+      '    </languageList>\n' +
+      '    <key value="DEC_">\n' +
+      '        <val lang="en_US">April flowers</val>\n' +
+      '        <val lang="fr_FR">April flowers</val>\n' +
+      '        <val lang="ja_JP">Aprili flowersi</val>\n' +
+      '        <val lang="nl_NL"/>\n' +
+      '    </key>\n' +
+      '</translation>';
+    fs.writeFileSync(skippedTranslationXml, testSkippedTagsTranslationXml, 'utf8');
+    let synci18n = Synci18n({
+      sourceFiles: [skippedTranslationXml],
+      destinationFile: destinationFile
+    });
+
+    deleteIfFileExists(destinationFile);
+    synci18n.generateTranslations();
+
+    let msgsFileContents = fs.readFileSync(synci18n.destinationFile, 'utf8');
+    msgsFileContents.indexOf('de_DE').should.equal(-1);
+    msgsFileContents.indexOf('nl_NL').should.equal(-1);
+    (msgsFileContents.indexOf('{DEC_:{en_US:"April flowers",ja_JP:"Aprili flowersi"}') !== -1)
+      .should.equal(true);
+
+    fs.existsSync(destinationFile).should.equal(true);
+    fs.unlinkSync(destinationFile);
+    deleteIfFileExists(skippedTranslationXml);
+  });
+});
