@@ -29,6 +29,7 @@ function Synci18n(options) {
   this.languages = [];
   this.supportedLanguages = [];
   this.supportedLanguagesMap = {};
+  this.sourceLanguagesHeader_ = null;
 
   this.unusedTags = [];
   this.tagsNotInXml = [];
@@ -127,6 +128,13 @@ Synci18n.prototype.readSourceFiles = function (sourceFiles) {
     var sourceFile = sourceFiles[i];
     if (fs.existsSync(sourceFile)) {
       var xmlFileContent = fs.readFileSync(sourceFile, 'utf8');
+
+      // Save the languageList header.
+      var languageListStartIndex = xmlFileContent.indexOf('<languageList>');
+      var endTag = '</languageList>';
+      var languageListEndIndex = xmlFileContent.indexOf(endTag) + endTag.length;
+      this.sourceLanguagesHeader_ = xmlFileContent.substring(languageListStartIndex, languageListEndIndex);
+
       var parser = new xml2js.Parser();
       parser.parseString(xmlFileContent, (function(err, result) {
         if (result) {
@@ -401,7 +409,7 @@ Synci18n.prototype.generateTranslations = function () {
     var targetPath = path.resolve(path.dirname(this.translationXmlDestination));
     console.log('Creating folder', targetPath);
     Synci18n.makeDirectory(targetPath);
-    fs.writeFileSync(this.translationXmlDestination, utils.makeXmlWithTags(translationXmlElements, this.cleanTargetXml), 'utf8');
+    fs.writeFileSync(this.translationXmlDestination, utils.makeXmlWithTags(translationXmlElements, this.cleanTargetXml, this.sourceLanguagesHeader_), 'utf8');
 
     this.checkTranslationStatus();
     this.checkQuotesServerSide(this.extractedServerTags);

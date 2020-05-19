@@ -417,6 +417,10 @@ describe('outputTranslationXml', function () {
       sourceFile: defaultTargetTranslationXml,
       translationXmlDestination: customTargetTranslationXml
     });
+    // The resulting file containing only the used server tags should keep the original languageList element.
+    var serverTagsOnlyFile = fs.readFileSync(defaultTargetTranslationXml, 'utf8');
+    serverTagsOnlyFile.indexOf('<language testKeepSourceLanguageList="yes"').should.not.equal(-1);
+    otherSynci18n.languages.should.eql([ 'en_US', 'de_DE', 'fr_FR', 'ja_JP', 'nl_NL']);
 
     otherSynci18n.translationXmlDestination.should.equal(customTargetTranslationXml);
     otherSynci18n.generateTranslations();

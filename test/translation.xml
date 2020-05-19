@@ -3,7 +3,7 @@
 <!-- Fragments such as {$APP_NAME} are variables and will be replaced with content, should be left untranslated, but moved according to syntax. -->
 <translation>
     <languageList>
-        <language description="English" lang="en_US" localeDescription="English"/>
+        <language testKeepSourceLanguageList="yes" description="English" lang="en_US" localeDescription="English"/>
         <language description="German" lang="de_DE" localeDescription="Deutsch"/>
         <language description="French" lang="fr_FR" localeDescription="Français"/>
         <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>

@@ -15,24 +15,27 @@ function getUniformTagName(tagName) {
  * Wrap the list of tag elements to create a translation.xml file.
  * @param translationXmlElements {string} List of translation translationXmlElements xml elements.
  * @param showWarning {boolean|null} Whether to add a comment warning that the file is generated.
+ * @param {string|null} sourceLanguageListElement The language list element from the source file.
  * @returns {string} The translation.xml file contents.
  */
-function makeXmlWithTags (translationXmlElements, showWarning) {
+function makeXmlWithTags (translationXmlElements, showWarning, sourceLanguageListElement) {
   var generatedFileWarning = '';
   if (showWarning) {
     generatedFileWarning = '<!-- IMPORTANT: This file is generated and contains only the subset of messages used on the server-side. -->\n' +
       '<!-- You should not manually edit this file. -->\n';
   }
-  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    generatedFileWarning +
-    '<translation>\n' +
-    '    <languageList>\n' +
+  var languageList = sourceLanguageListElement || '    <languageList>\n' +
     '        <language description="English" lang="en_US" localeDescription="English"/>\n' +
     '        <language description="German" lang="de_DE" localeDescription="Deutsch"/>\n' +
     '        <language description="French" lang="fr_FR" localeDescription="Français"/>\n' +
     '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
     '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
-    '    </languageList>\n' + translationXmlElements + '</translation>'
+    '        <language description="Chinese" lang="zh_CN" localeDescription="中文"/>\n' +
+    '    </languageList>\n';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    generatedFileWarning +
+    '<translation>\n' +
+     languageList + translationXmlElements + '</translation>'
 }
 
 /**
