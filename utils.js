@@ -31,7 +31,8 @@ function makeXmlWithTags (translationXmlElements, showWarning, sourceLanguageLis
     '        <language description="Japanese" lang="ja_JP" localeDescription="日本語"/>\n' +
     '        <language description="Dutch" lang="nl_NL" localeDescription="Nederlands"/>\n' +
     '        <language description="Chinese" lang="zh_CN" localeDescription="中文"/>\n' +
-    '    </languageList>\n';
+    '    </languageList>';
+  languageList += '\n';
   return '<?xml version="1.0" encoding="UTF-8"?>\n' +
     generatedFileWarning +
     '<translation>\n' +
