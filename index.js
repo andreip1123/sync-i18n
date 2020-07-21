@@ -3,7 +3,9 @@ const path = require('path');
 
 const xml2js = require('xml2js');
 
-var utils = require('./utils.js');
+let utils = require('./utils.js');
+let fileUtil = require('./file_utils.js');
+let stringUtil = require('./string_utils.js');
 
 function Synci18n(options) {
 
@@ -37,7 +39,14 @@ function Synci18n(options) {
   this.languageSkipInconsistencies = [];
 
   this.rootDir = options.rootDir || '.';
-  this.sourceFiles = this.getSourceFiles(options);
+
+  let sourceFilesFromOptions = options.sourceFiles || [];
+  // deprecated option. todo: delete it.
+  if (options.sourceFile) {
+    sourceFilesFromOptions.push(options.sourceFile);
+  }
+  this.sourceFiles = fileUtil.getSourceFiles(this.rootDir, sourceFilesFromOptions);
+
   this.destinationFile = options.destinationFile || this.rootDir + '/web/0translations.js'; //todo: test if parameter is folder path.
   this.translationXmlDestination = options.translationXmlDestination || this.rootDir + '/target/i18n/translation.xml';
   this.jsSourcesLocation = options.jsSourcesLocation || this.rootDir + '/web';
@@ -57,49 +66,6 @@ function Synci18n(options) {
   this.extractTags();
 }
 
-/**
- * Get the source files from the options.
- * If not properly defined, go to fallbacks and show warnings.
- * @param options The options object.
- * @returns {Array<string>} The list of source files.
- */
-Synci18n.prototype.getSourceFiles = function (options) {
-  var sourceFiles = [];
-  var defaultSourceFile = this.rootDir + '/i18n/translation.xml';
-  if (Array.isArray(options.sourceFiles)) {
-    sourceFiles.forEach(function(fileToCheck){
-      if (!fs.existsSync(fileToCheck)) {
-        console.warn('Warning: Source file does not exist: ' + fileToCheck);
-      }
-    });
-    sourceFiles = options.sourceFiles;
-  } else {
-    if (options.sourceFiles) {
-      if (fs.existsSync(options.sourceFiles)) {
-        sourceFiles = [options.sourceFiles];
-      } else {
-        console.warn('Warning: Source file does not exist: ' + options.sourceFiles);
-        console.warn('Falling back to ' + defaultSourceFile);
-        sourceFiles = [defaultSourceFile];
-      }
-    }
-    if (options.sourceFile) {
-      if (fs.existsSync(options.sourceFile)) {
-        sourceFiles = [options.sourceFile];
-      } else {
-        console.warn('Warning: Source file does not exist: ' + options.sourceFile);
-        console.warn('Falling back to ' + defaultSourceFile);
-        sourceFiles = [defaultSourceFile];
-      }
-    } else {
-      if (!fs.existsSync(defaultSourceFile)) {
-        console.log('Warning: Source file does not exist: ' + defaultSourceFile)
-      }
-      sourceFiles = [defaultSourceFile];
-    }
-  }
-  return sourceFiles;
-};
 
 /**
  * Add languages to supported languages.
@@ -331,32 +297,6 @@ Synci18n.prototype.checkForUnusedTags = function () {
 };
 
 /**
- * Create directories to fill out a path.
- * Stops if it goes up 3 levels and does not reach an existing directory.
- * @param targetPath The directory path to be created.
- */
-Synci18n.makeDirectory = function (targetPath) {
-  if (!fs.existsSync(targetPath)) {
-    var poppedSegments = [];
-    var sanityPath = targetPath;
-    var counter = 0;
-    while (!fs.existsSync(sanityPath) && counter < 3) {
-      sanityPath = sanityPath.split(path.sep);
-      poppedSegments.unshift(sanityPath.pop());
-      sanityPath = sanityPath.join(path.sep);
-      counter++;
-      if (counter >= 3) {
-        console.log('Went up 3 parents to find a starting point, giving up.');
-      }
-    }
-    for (var i = 0; i < poppedSegments.length; i++) {
-      sanityPath += path.sep + poppedSegments[i];
-      fs.mkdirSync(sanityPath);
-    }
-  }
-};
-
-/**
  * Create the msgs file, which will add the translations so they can be displayed.
  */
 Synci18n.prototype.generateTranslations = function () {
@@ -385,7 +325,7 @@ Synci18n.prototype.generateTranslations = function () {
   }
 
   // Make parent directories if necessary.
-  Synci18n.makeDirectory(path.resolve(path.dirname(this.destinationFile)));
+  fileUtil.makeDirectory(path.resolve(path.dirname(this.destinationFile)));
   fs.writeFileSync(this.destinationFile, msgsFile, 'utf8');
 
   if (this.serverTags.length > 0) {
@@ -408,7 +348,7 @@ Synci18n.prototype.generateTranslations = function () {
 
     var targetPath = path.resolve(path.dirname(this.translationXmlDestination));
     console.log('Creating folder', targetPath);
-    Synci18n.makeDirectory(targetPath);
+    fileUtil.makeDirectory(targetPath);
     fs.writeFileSync(this.translationXmlDestination, utils.makeXmlWithTags(translationXmlElements, this.cleanTargetXml, this.sourceLanguagesHeader_), 'utf8');
 
     this.checkTranslationStatus();
@@ -432,25 +372,6 @@ Synci18n.prototype.removeNewlinesAndTabs = function (message) {
 };
 
 /**
- * Check if message has unescaped quotes and variables.
- * May be a problem on the server-side.
- * @param {string} message The message to check.
- * @return {boolean} Whether the message has unescaped quotes.
- */
-Synci18n.prototype.checkMessageHasUnescapedQuotes = function (message) {
-  var hasUnescapedQuotes = false;
-  if (message.indexOf('}') !== -1) {
-    // Check whether each quote in the message is followed by another quote.
-    var indexOfQuote = message.indexOf("'");
-    while (indexOfQuote !== -1 && !hasUnescapedQuotes) {
-      hasUnescapedQuotes = (indexOfQuote < message.length - 1 && message[indexOfQuote + 1] !== "'");
-      indexOfQuote = message.indexOf("'", indexOfQuote + 2);
-    }
-  }
-  return hasUnescapedQuotes;
-};
-
-/**
  * MessageFormat will break when it finds unescaped single quotes.
  * This is only a problem for server-side tags.
  * @param serverTags
@@ -463,7 +384,7 @@ Synci18n.prototype.checkQuotesServerSide = function (serverTags) {
     var serverTag = this.getMsgsObjectForTag(s, true);
     var foundQuoteDanger = false;
     for (var langCode in serverTag) {
-      if (this.checkMessageHasUnescapedQuotes(serverTag[langCode])) {
+      if (stringUtil.checkMessageHasUnescapedQuotes(serverTag[langCode])) {
         console.error('ERROR: The quote must be escaped in: ', serverTag[langCode]);
         console.error(Object.keys(serverTags));
         foundQuoteDanger = true;

@@ -4,6 +4,8 @@ var fs = require('fs');
 
 var Synci18n = require('../index');
 var utils = require('../utils.js');
+let fileUtil = require('../file_utils.js');
+let stringUtil = require('../string_utils.js');
 
 var sourceFile = './test/translation.xml';
 
@@ -122,7 +124,7 @@ describe('testDefaults', function () {
   it('should create at expected default paths', function () {
     var synci18n = Synci18n({rootDir: __dirname});
     // Weak check for proper default paths.
-    synci18n.getSourceFiles({})[0].indexOf('/i18n/translation.xml').should.not.equal(-1);
+    synci18n.sourceFiles[0].indexOf('/i18n/translation.xml').should.not.equal(-1);
     synci18n.destinationFile.indexOf('/web/0translations.js').should.not.equal(-1);
   });
 });
@@ -146,7 +148,7 @@ describe('getMessages', function () {
 describe('sourceHasNoTags', function () {
   it('nulls should be guarded', function () {
     var folderForNoTagsTest = __dirname + '/web_no_tags';
-    Synci18n.makeDirectory(folderForNoTagsTest);
+    fileUtil.makeDirectory(folderForNoTagsTest);
 
     var msgsFilePath = folderForNoTagsTest + '/msgs_no_tags.js';
     var jsSourceFile = folderForNoTagsTest + '/plugin_has_no_tags.js';
@@ -189,7 +191,7 @@ describe('findTagsInString', function () {
       '})();';
 
     var mockPluginDirectory = __dirname + '/web_tag_formats';
-    Synci18n.makeDirectory(mockPluginDirectory);
+    fileUtil.makeDirectory(mockPluginDirectory);
 
     var msgsFilePath = mockPluginDirectory + '/msgs_tag_formats.js';
     var jsSourceFile = mockPluginDirectory + '/plugin_tag_formats.js';
@@ -654,7 +656,7 @@ describe('testMultipleSkippedLanguages', function () {
 describe('testUseLocalMsgsSourceHasNoTags', function () {
   it('should never happen in web author mode', function () {
     var folderForNoTagsTest = __dirname + '/web_no_tags';
-    Synci18n.makeDirectory(folderForNoTagsTest);
+    fileUtil.makeDirectory(folderForNoTagsTest);
 
     var msgsFilePath = folderForNoTagsTest + '/msgs_no_tags.js';
     var jsSourceFile = folderForNoTagsTest + '/plugin_has_no_tags.js';
@@ -741,13 +743,13 @@ describe('testTagsWithQuotes', function () {
     deleteIfFileExists(quotesTranslationXml);
 
     // to test the detection straight on the string, do it faster with:
-    synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote").should.equal(false);
-    synci18n.checkMessageHasUnescapedQuotes("this string only has'a quote and a {variable}").should.equal(true);
+    stringUtil.checkMessageHasUnescapedQuotes("this string only has'a quote").should.equal(false);
+    stringUtil.checkMessageHasUnescapedQuotes("this string only has'a quote and a {variable}").should.equal(true);
 
     // Detect if the quotes have been properly escaped.
-    synci18n.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d'origine.").should.equal(true);
-    synci18n.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d''origine.").should.equal(false);
-    synci18n.checkMessageHasUnescapedQuotes("pas d'éléments.").should.equal(false);
+    stringUtil.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d'origine.").should.equal(true);
+    stringUtil.checkMessageHasUnescapedQuotes("{0} l''enfant basculé vers le chemin d''origine.").should.equal(false);
+    stringUtil.checkMessageHasUnescapedQuotes("pas d'éléments.").should.equal(false);
   });
 });
 
