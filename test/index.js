@@ -291,6 +291,50 @@ describe('getMsgsObjectForTag', function () {
   });
 });
 
+describe('removeNewLines', function () {
+  it('should remove newlines from messages by default', function () {
+    var msgsFilePath = __dirname + '/msgs_strip_newlines.js';
+    var synci18n = Synci18n({
+      sourceFiles: [
+        __dirname + '/translation_newline.xml'
+      ],
+      clientSideExceptions: ['NEWLINE_TEST_'],
+      destinationFile: msgsFilePath
+    });
+
+    // Follow the exceptions all the way to the msgs file content.
+    synci18n.generateTranslations();
+
+    var msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    msgsFileContents.should.equal('(function(){var msgs={NEWLINE_TEST_:{en_US:"before break after break"}};sync.Translation.addTranslations(msgs);})();');
+
+    fs.existsSync(msgsFilePath).should.equal(true);
+    fs.unlinkSync(msgsFilePath);
+  });
+});
+
+describe('removeTabsAndExtraSpaces', function () {
+  it('should remove newlines from messages by default', function () {
+    var msgsFilePath = __dirname + '/msgs_strip_newlines.js';
+    var synci18n = Synci18n({
+      sourceFiles: [
+        __dirname + '/translation_newline.xml'
+      ],
+      clientSideExceptions: ['NEWLINE_TEST_2'],
+      destinationFile: msgsFilePath
+    });
+
+    // Follow the exceptions all the way to the msgs file content.
+    synci18n.generateTranslations();
+
+    var msgsFileContents = fs.readFileSync(msgsFilePath, 'utf8');
+    msgsFileContents.should.equal('(function(){var msgs={"NEWLINE_TEST_2":{en_US:" before break after break "}};sync.Translation.addTranslations(msgs);})();');
+
+    fs.existsSync(msgsFilePath).should.equal(true);
+    fs.unlinkSync(msgsFilePath);
+  });
+});
+
 describe('removeNewLinesAndTabs', function () {
   it('should remove newlines and tabs from messages', function () {
     var synci18n = Synci18n({

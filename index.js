@@ -260,7 +260,10 @@ Synci18n.prototype.getMsgsObjectForTag = function (tagObj, duplicateMessages) {
   var fallbackLanguage = 'en_US';
   if (!duplicateMessages) {
     var fallbackMessage = value[fallbackLanguage];
-    var languages = this.languages;
+    // A tag may have languages which are not defined in the language list.
+    // Remove them if they are duplicates.
+    // todo: Maybe warn in this case, it's probably a typo.
+    var languages = Object.keys(value);
     languages.forEach(function (lang) {
       if (lang !== fallbackLanguage && value[lang] === fallbackMessage) {
         delete value[lang];
@@ -364,11 +367,7 @@ Synci18n.prototype.generateTranslations = function () {
  * @returns {string} The translated message, purged of newlines and tabs.
  */
 Synci18n.prototype.removeNewlinesAndTabs = function (message) {
-  if(message.indexOf('\n') !== -1) {
-    message = message.replace(/\r?\n\|\r/g, '').replace(/\s\s+/g, ' ');
-    //tagsWithNewlines++;
-  }
-  return message;
+  return message.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ');
 };
 
 /**
