@@ -622,8 +622,9 @@ describe('testSkippedTags', function () {
       sourceFiles: [sourceFile, skippedTranslationXml]
     });
     synci18n.checkTranslationStatus();
-    synci18n.tagSkipInconsistencies.length.should.eql(1);
-    synci18n.tagSkipInconsistencies.should.eql(['April flowers']);
+    let tagSkipInconsistencies = synci18n.problemReporter.tagSkipInconsistencies;
+    tagSkipInconsistencies.length.should.eql(1);
+    tagSkipInconsistencies.should.eql(['April flowers']);
 
     deleteIfFileExists(skippedTranslationXml);
   });

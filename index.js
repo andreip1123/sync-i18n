@@ -6,6 +6,7 @@ const xml2js = require('xml2js');
 let utils = require('./utils.js');
 let fileUtil = require('./file_utils.js');
 let stringUtil = require('./string_utils.js');
+let ProblemReporter = require('./components/problem_reporter.js');
 
 function Synci18n(options) {
 
@@ -34,8 +35,7 @@ function Synci18n(options) {
   this.sourceLanguagesHeader_ = null;
 
   this.unusedTags = [];
-  this.tagsNotInXml = [];
-  this.tagSkipInconsistencies = [];
+  this.problemReporter = new ProblemReporter();
   this.languageSkipInconsistencies = [];
 
   this.rootDir = options.rootDir || '.';
@@ -230,7 +230,7 @@ Synci18n.prototype.getMsgsObject = function () {
         console.log(clientSideTag, ' falls back to ', uniformTagName);
       }
     } else {
-      this.tagsNotInXml.push(clientSideTag);
+      this.problemReporter.addTagNotInXml(clientSideTag);
     }
   }, this);
 
@@ -587,7 +587,7 @@ Synci18n.prototype.checkSkippedTranslations = function () {
     var tagNotProperlySkipped = this.checkSkippedTag(tagObj);
     if (tagNotProperlySkipped) {
       // The tag has the skipTranslation attribute - all languages should be skipped.
-      this.tagSkipInconsistencies.push(tagNotProperlySkipped);
+      this.problemReporter.addTagSkipInconsistency(tagNotProperlySkipped);
     } else {
       // This tag may have languages with skipTranslation attribute - those languages should be skipped.
       var languagesNotProperlySkipped = this.checkSkippedLanguages(tagObj);
@@ -596,9 +596,6 @@ Synci18n.prototype.checkSkippedTranslations = function () {
       }
     }
   }, this);
-  if (this.tagSkipInconsistencies.length > 0) {
-    console.error('ERROR: Tags marked with skipTranslation should not be translated', this.tagSkipInconsistencies);
-  }
   if (this.languageSkipInconsistencies.length > 0) {
     console.error('ERROR: Languages marked with skipTranslation should not be translated', this.languageSkipInconsistencies);
   }
@@ -664,9 +661,7 @@ Synci18n.prototype.getMessageForLanguage = function (translationObj) {
 Synci18n.prototype.checkTranslationStatus = function () {
   this.checkSkippedTranslations();
 
-  if (this.tagsNotInXml.length > 0) {
-    console.error('ERROR: Could not find tags in translation file:', this.tagsNotInXml);
-  }
+  this.problemReporter.report();
 };
 
 /**
