@@ -13,7 +13,7 @@ ProblemReporter.prototype.addTagSkipInconsistency = function (tag) {
 
 ProblemReporter.prototype.report = function () {
   if (this.tagsNotInXml.length > 0) {
-    console.error('ERROR: Could not find tags in translation file:', this.tagsNotInXml);
+    console.error('ERROR: Tag used but was not found in translation file:', this.tagsNotInXml);
   }
 
   if (this.tagSkipInconsistencies.length > 0) {

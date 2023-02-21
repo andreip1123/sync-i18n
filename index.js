@@ -472,7 +472,9 @@ Synci18n.prototype.extractTagsInternal = function (tagsType) {
         }
       }
     } else {
-      console.warn('WARNING: [' + tagsType + '-side-tags]' + ' Could not find folder: ', directory);
+      if (!this.webAuthorMode) {
+        console.warn('WARNING: [' + tagsType + '-side-tags]' + ' Could not find folder: ', directory);
+      }
     }
 
   };
@@ -678,7 +680,8 @@ Synci18n.prototype.addExceptions = function (tagList, tagExceptions) {
     return this.uniformTags.indexOf(utils.getUniformTagName(tag)) !== -1;
   }.bind(this));
   if (tagExceptions.length > 0) {
-    console.log('The following client-side tags will be added even though they seem to not be used: ');
+    console.log('The following client-side tags will be forcefully added: ');
+    console.log('* their usage cannot be detected because they are used in frameworks usually');
     console.log(tagExceptions);
   }
   // Remove duplicates.
