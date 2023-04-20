@@ -357,7 +357,9 @@ Synci18n.prototype.generateTranslations = function () {
     this.checkTranslationStatus();
     this.checkQuotesServerSide(this.extractedServerTags);
   } else {
-    console.log('Warning: No server tags found... skipping');
+    if (this.webAuthorMode) {
+      console.log('Warning: No server tags found... skipping');
+    }
   }
 };
 
