@@ -612,7 +612,7 @@ Synci18n.prototype.checkSkippedTranslations = function () {
  */
 Synci18n.prototype.checkSkippedTag = function (tagObj) {
   var tagSkipError = null;
-  if (tagObj['$'].hasOwnProperty('skipTranslation') && tagObj['$']['skipTranslation'] === 'true') {
+  if (tagObj['$'].skipTranslation && tagObj['$'].skipTranslation === 'true') {
     var msgsObjForTag = this.getMsgsObjectForTag(tagObj, false);
     var englishMsg = msgsObjForTag['en_US'];
     for (var langCode in msgsObjForTag) {
